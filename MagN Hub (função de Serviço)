@@ -689,7 +689,7 @@ Troll:AddButton({
 })
 
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
-AntiTab:AddToggle({
+Anti:AddToggle({
    Name = "Anti Sit",
    Defaunt = false,
    Callback = function(Value)
