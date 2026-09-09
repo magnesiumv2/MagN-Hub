@@ -154,3 +154,264 @@ notify("Script de Dupe", "Finalizando processo...")
 task.wait(0.2)
 end
 })
+
+BossScript:AddButton({
+   Name = "Bring Parts Agressive",
+   Description= "Traz todas as Parts não ancoradas para o player escrito na textbox",
+   Callback = function()
+-- Gui to Lua - VERSÃO AGRESSIVA
+-- Versão Otimizada com Velocidade Aumentada
+
+local Gui = Instance.new("ScreenGui")
+local Main = Instance.new("Frame")
+local Box = Instance.new("TextBox")
+local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+local Label = Instance.new("TextLabel")
+local UITextSizeConstraint_2 = Instance.new("UITextSizeConstraint")
+local Button = Instance.new("TextButton")
+local UITextSizeConstraint_3 = Instance.new("UITextSizeConstraint")
+local SpeedSlider = Instance.new("Frame")
+local SpeedLabel = Instance.new("TextLabel")
+local SpeedValue = Instance.new("TextLabel")
+
+-- Properties
+Gui.Name = "Gui"
+Gui.Parent = gethui()
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Main.Name = "Main"
+Main.Parent = Gui
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.BorderColor3 = Color3.fromRGB(255, 0, 0)
+Main.BorderSizePixel = 3
+Main.Position = UDim2.new(0.335954279, 0, 0.542361975, 0)
+Main.Size = UDim2.new(0.270350261, 0, 0.220880623, 0)
+Main.Active = true
+Main.Draggable = true
+
+Box.Name = "Box"
+Box.Parent = Main
+Box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Box.BorderColor3 = Color3.fromRGB(255, 0, 0)
+Box.BorderSizePixel = 2
+Box.Position = UDim2.new(0.0980926454, 0, 0.15, 0)
+Box.Size = UDim2.new(0.801089942, 0, 0.28, 0)
+Box.FontFace = Font.new("rbxasset://fonts/families/SourceSansSemibold.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+Box.PlaceholderText = "Player aqui"
+Box.Text = ""
+Box.TextColor3 = Color3.fromRGB(255, 50, 50)
+Box.TextScaled = true
+Box.TextSize = 31.000
+Box.TextWrapped = true
+
+UITextSizeConstraint.Parent = Box
+UITextSizeConstraint.MaxTextSize = 31
+
+Label.Name = "Label"
+Label.Parent = Main
+Label.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Label.BorderColor3 = Color3.fromRGB(255, 0, 0)
+Label.BorderSizePixel = 2
+Label.Size = UDim2.new(1, 0, 0.12, 0)
+Label.FontFace = Font.new("rbxasset://fonts/families/Nunito.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+Label.Text = "AGGRESSIVE BRING PARTS v2 🔥"
+Label.TextColor3 = Color3.fromRGB(255, 50, 50)
+Label.TextScaled = true
+Label.TextSize = 14.000
+Label.TextWrapped = true
+
+UITextSizeConstraint_2.Parent = Label
+UITextSizeConstraint_2.MaxTextSize = 21
+
+Button.Name = "Button"
+Button.Parent = Main
+Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Button.BorderColor3 = Color3.fromRGB(255, 255, 255)
+Button.BorderSizePixel = 2
+Button.Position = UDim2.new(0.1, 0, 0.55, 0)
+Button.Size = UDim2.new(0.8, 0, 0.25, 0)
+Button.Font = Enum.Font.Nunito
+Button.Text = "INICIAR | OFF"
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.TextScaled = true
+Button.TextSize = 28.000
+Button.TextWrapped = true
+
+UITextSizeConstraint_3.Parent = Button
+UITextSizeConstraint_3.MaxTextSize = 28
+
+-- Scripts
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local character
+local humanoidRootPart
+local mainStatus = true
+local aggressiveSpeed = 500 -- Velocidade aumentada
+local responsiveness = 500 -- Responsividade alta
+
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if input.KeyCode == Enum.KeyCode.RightControl and not gameProcessedEvent then
+        mainStatus = not mainStatus
+        Main.Visible = mainStatus
+    end
+end)
+
+local Folder = Instance.new("Folder", Workspace)
+local Part = Instance.new("Part", Folder)
+local Attachment1 = Instance.new("Attachment", Part)
+Part.Anchored = true
+Part.CanCollide = false
+Part.Transparency = 1
+
+if not getgenv().NetworkAggressive then
+    getgenv().NetworkAggressive = {
+        BaseParts = {},
+        Velocity = Vector3.new(50, 50, 50)
+    }
+
+    NetworkAggressive.RetainPart = function(Part)
+        if Part:IsA("BasePart") and Part:IsDescendantOf(Workspace) then
+            table.insert(NetworkAggressive.BaseParts, Part)
+            Part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+            Part.CanCollide = false
+        end
+    end
+
+    local function EnablePartControl()
+        LocalPlayer.ReplicationFocus = Workspace
+        RunService.Heartbeat:Connect(function()
+            sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+            for _, Part in pairs(NetworkAggressive.BaseParts) do
+                if Part:IsDescendantOf(Workspace) then
+                    Part.Velocity = NetworkAggressive.Velocity
+                end
+            end
+        end)
+    end
+
+    EnablePartControl()
+end
+
+local function ForcePart(v)
+    if v:IsA("BasePart") and not v.Anchored and not v.Parent:FindFirstChildOfClass("Humanoid") and not v.Parent:FindFirstChild("Head") and v.Name ~= "Handle" then
+        for _, x in ipairs(v:GetChildren()) do
+            if x:IsA("BodyMover") or x:IsA("RocketPropulsion") or x:IsA("Torque") or x:IsA("AlignPosition") then
+                x:Destroy()
+            end
+        end
+        if v:FindFirstChild("Attachment") then
+            v:FindFirstChild("Attachment"):Destroy()
+        end
+        if v:FindFirstChild("AlignPosition") then
+            v:FindFirstChild("AlignPosition"):Destroy()
+        end
+        if v:FindFirstChild("Torque") then
+            v:FindFirstChild("Torque"):Destroy()
+        end
+        v.CanCollide = false
+        
+        local Torque = Instance.new("Torque", v)
+        Torque.Torque = Vector3.new(500000, 500000, 500000) -- Torque aumentado
+        local AlignPosition = Instance.new("AlignPosition", v)
+        local Attachment2 = Instance.new("Attachment", v)
+        Torque.Attachment0 = Attachment2
+        AlignPosition.MaxForce = math.huge
+        AlignPosition.MaxVelocity = math.huge
+        AlignPosition.Responsiveness = responsiveness -- Responsiveness aumentada
+        AlignPosition.Attachment0 = Attachment2
+        AlignPosition.Attachment1 = Attachment1
+    end
+end
+
+local blackHoleActive = false
+local DescendantAddedConnection
+local updateConnection
+
+local function toggleBlackHole()
+    blackHoleActive = not blackHoleActive
+    if blackHoleActive then
+        Button.Text = "PARANDO | ON 🔥"
+        Button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        
+        -- Força TODAS as partes do mapa
+        for _, v in ipairs(Workspace:GetDescendants()) do
+            ForcePart(v)
+        end
+
+        DescendantAddedConnection = Workspace.DescendantAdded:Connect(function(v)
+            if blackHoleActive then
+                task.spawn(function()
+                    ForcePart(v)
+                end)
+            end
+        end)
+
+        -- Atualização super rápida
+        updateConnection = RunService.RenderStepped:Connect(function()
+            if blackHoleActive and humanoidRootPart then
+                Attachment1.WorldCFrame = humanoidRootPart.CFrame
+                -- Boost extra de velocidade
+                NetworkAggressive.Velocity = Vector3.new(aggressiveSpeed, aggressiveSpeed, aggressiveSpeed)
+            end
+        end)
+    else
+        Button.Text = "INICIAR | OFF"
+        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        if DescendantAddedConnection then
+            DescendantAddedConnection:Disconnect()
+        end
+        if updateConnection then
+            updateConnection:Disconnect()
+        end
+    end
+end
+
+local function getPlayer(name)
+    local lowerName = string.lower(name)
+    for _, p in pairs(Players:GetPlayers()) do
+        local lowerPlayer = string.lower(p.Name)
+        if string.find(lowerPlayer, lowerName) then
+            return p
+        elseif string.find(string.lower(p.DisplayName), lowerName) then
+            return p
+        end
+    end
+end
+
+local player = nil
+
+local function setupBoxScript()
+    local script = Instance.new('Script', Box)
+    script.Parent.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            player = getPlayer(Box.Text)
+            if player then
+                Box.Text = player.Name
+                print("✅ Player encontrado:", player.Name)
+            else
+                print("❌ Player não encontrado")
+            end
+        end
+    end)
+end
+setupBoxScript()
+
+local function setupButtonScript()
+    local script = Instance.new('Script', Button)
+    script.Parent.MouseButton1Click:Connect(function()
+        if player then
+            character = player.Character or player.CharacterAdded:Wait()
+            humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+            toggleBlackHole()
+        else
+            print("❌ Player não foi selecionado!")
+        end
+    end)
+end
+setupButtonScript()
+end
+})
