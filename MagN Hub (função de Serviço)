@@ -687,39 +687,58 @@ Troll:AddButton({
 })
 
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
-Anti:AddButton({
+Anti:AddToggle({
    Name = "Anti Sit",
+   Default = false,
    Callback = function()
-local ligado = false
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService") -- Opcional, caso queira adicionar efeitos visuais no futuro
+local LocalPlayer = Players.LocalPlayer
 
-function alternar()
-    ligado = not ligado
-    
-    if ligado then
-        -- Executa o loop do 'ligado' em segundo plano
-        task.spawn(function()
-            while ligado do
-                local character = game:GetService("Players").LocalPlayer.Character
-                if character then
-                    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-                    if humanoid then
-                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-                    end
-                end
-                task.wait(0.1) -- Delay do loop para não travar o jogo
+-- Configurações básicas
+_G.AntiSit = _G.AntiSit or false -- Variável global para rastrear o estado do toggle
+
+-- Função que aplica ou remove o Anti-Sit do personagem atual
+local function aplicarAntiSit(character)
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if humanoid then
+        if _G.AntiSit then
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            if humanoid.Sit then
+                humanoid.Sit = false -- Força o personagem a levantar se já estiver sentado
             end
-        end)
-    else
-        -- Executa o código do 'desligado' uma única vez ao desativar
-        local character = game:GetService("Players").LocalPlayer.Character
-        if character then
-            local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-            if humanoid then
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-            end
+        else
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
         end
     end
 end
+
+-- Função principal do Toggle
+local function toggleAntiSit()
+    _G.AntiSit = not _G.AntiSit -- Inverte o estado atual (true/false)
+    
+    -- Notificação visual no console/chat para você saber se ligou ou desligou
+    if _G.AntiSit then
+        print("[Anti-Sit]: ATIVADO")
+    else
+        print("[Anti-Sit]: DESATIVADO")
+    end
+
+    -- Aplica no personagem atual
+    if LocalPlayer.Character then
+        aplicarAntiSit(LocalPlayer.Character)
+    end
+end
+
+-- Mantém o Anti-Sit funcionando mesmo se você morrer e o personagem resetar
+LocalPlayer.CharacterAdded:Connect(function(character)
+    -- Espera um momento curto para o humanoid carregar completamente
+    task.wait(0.5)
+    aplicarAntiSit(character)
+end)
+
+-- Executa o toggle (toda vez que você rodar esse bloco de código abaixo, ele liga/desliga)
+toggleAntiSit()
 end
 })
 
