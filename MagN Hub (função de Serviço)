@@ -13,8 +13,8 @@ Window:AddMinimizeButton({
 })
 
 local InfoTab = Window:MakeTab({ Title = "Info", Icon = "rbxassetid://10723415903" })
-
-
+game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
+game:GetService("CoreGui")["redz Library V5"].Hub.UiGradient:Destroy()
 
 InfoTab:AddSection({ "Informações do Script" })
 InfoTab:AddParagraph({ "Owner / Developer:", "Magnesiumv2" })
