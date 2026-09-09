@@ -528,7 +528,7 @@ Troll:AddToggle({
             local target = Players:FindFirstChild(selectedPlayerName)
             if not target or not target.Character then return end
             local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+            local tRoot = target.Character and target.Character:FindFirstChild("Head")
             if not root or not tRoot then return end
             local char = LocalPlayer.Character
             local hum = char:FindFirstChildOfClass("Humanoid")
@@ -548,7 +548,7 @@ task.wait(0.0001)
             }
             game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
 
-            task.wait(0.3)
+            task.wait(0.0001)
             local tool = LocalPlayer.Backpack:FindFirstChild("Couch")
             if tool then
                 tool.Parent = char
