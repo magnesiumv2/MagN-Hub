@@ -1,9 +1,6 @@
 local Libary = loadstring(game:HttpGet("https://pastefy.app/TYVuPNOS/raw"))()
 workspace.FallenPartsDestroyHeight = -math.huge
 
-game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
-game:GetService("CoreGui")["redz Library V5"].Hub.UiGradient:Destroy()
-
 local Window = Libary:MakeWindow({
     Title = "MagN Hub",
     SubTitle = "Para Brookhaven RP (Hub Destrutivo)",
@@ -725,3 +722,5 @@ function alternar()
 end
 end
 })
+game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
+game:GetService("CoreGui")["redz Library V5"].Hub.UiGradient:Destroy()
