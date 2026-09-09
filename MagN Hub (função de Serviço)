@@ -703,12 +703,12 @@ local function aplicarAntiSit(character)
     local humanoid = character:WaitForChild("Humanoid", 5)
     if humanoid then
         if _G.AntiSit then
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
             if humanoid.Sit then
                 humanoid.Sit = false -- Força o personagem a levantar se já estiver sentado
             end
         else
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
         end
     end
 end
