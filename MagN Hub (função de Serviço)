@@ -688,3 +688,40 @@ Troll:AddButton({
     end
 })
 
+local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
+AntiTab:AddToggle({
+   Name = "Anti Sit",
+   Defaunt = false
+   Callback = function()
+local ligado = false
+
+function alternar()
+    ligado = not ligado
+    
+    if ligado then
+        -- Executa o loop do 'ligado' em segundo plano
+        task.spawn(function()
+            while ligado do
+                local character = game:GetService("Players").LocalPlayer.Character
+                if character then
+                    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+                    if humanoid then
+                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                    end
+                end
+                task.wait(0.1) -- Delay do loop para não travar o jogo
+            end
+        end)
+    else
+        -- Executa o código do 'desligado' uma única vez ao desativar
+        local character = game:GetService("Players").LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+            if humanoid then
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            end
+        end
+    end
+end
+end
+})
