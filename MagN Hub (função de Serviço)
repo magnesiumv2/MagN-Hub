@@ -415,3 +415,5 @@ end
 setupButtonScript()
 end
 })
+
+local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://438356389" })
