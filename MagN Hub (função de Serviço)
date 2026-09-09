@@ -689,9 +689,8 @@ Troll:AddButton({
 })
 
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
-Anti:AddToggle({
+Anti:AddButton({
    Name = "Anti Sit",
-   Default = false,
    Callback = function()
 local ligado = false
 
