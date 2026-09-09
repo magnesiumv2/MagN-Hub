@@ -555,7 +555,7 @@ task.wait(0.0001)
             end
 				task.wait(0.0001)
 				game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F, false, game)
-task.wait(0.0001)
+task.wait(0.001)
 
             workspace.FallenPartsDestroyHeight = 0/0
             local bv = Instance.new("BodyVelocity")
