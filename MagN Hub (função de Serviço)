@@ -692,36 +692,34 @@ local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
 Anti:AddToggle({
    Name = "Anti Sit",
    Default = false,
-   Callback = function(Value)
+   Callback = function()
 local ligado = false
 
--- Coloque esta função dentro do callback do seu Toggle
--- Exemplo: callback = function(Value)
-local function alternar(Value)
-    ligado = Value -- O 'Value' geralmente é fornecido pelo próprio Toggle (true/false)
+function alternar()
+    ligado = not ligado
     
     if ligado then
         -- Executa o loop do 'ligado' em segundo plano
         task.spawn(function()
             while ligado do
-                local player = game:GetService("Players").LocalPlayer
-                local character = player.Character or player.CharacterAdded:Wait()
-                local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
-                
-                if humanoid then
-                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                local character = game:GetService("Players").LocalPlayer.Character
+                if character then
+                    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+                    if humanoid then
+                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                    end
                 end
-                task.wait(0.1) -- Evita travamentos
+                task.wait(0.1) -- Delay do loop para não travar o jogo
             end
         end)
     else
         -- Executa o código do 'desligado' uma única vez ao desativar
-        local player = game:GetService("Players").LocalPlayer
-        local character = player.Character
-        local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
-        
-        if humanoid then
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        local character = game:GetService("Players").LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+            if humanoid then
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            end
         end
     end
 end
