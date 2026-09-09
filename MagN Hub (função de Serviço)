@@ -723,4 +723,19 @@ end
 end
 })
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
-game:GetService("CoreGui")["redz Library V5"].Hub.UiGradient:Destroy()
+Anti:AddButton({
+   Name = "Anti Client Kick",
+   Callback = function()
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    
+    if string.lower(method) == "kick" then
+        warn("Blocked a client-side kick attempt from: " .. tostring(self))
+        return nil
+    end
+    
+    return oldNamecall(self, ...)
+end
+end
+})
