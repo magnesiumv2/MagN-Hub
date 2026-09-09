@@ -743,3 +743,5 @@ end
 })
 
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
+wait(0.5)
+game:GetService("Players").LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Seated, true)
