@@ -576,12 +576,12 @@ task.wait(0.0001)
                     angle += 50
 
                     for _, part in ipairs(parts) do
-                        local pos_x = target.Character.HumanoidRootPart.Position.X
-                        local pos_y = target.Character.HumanoidRootPart.Position.Y
-                        local pos_z = target.Character.HumanoidRootPart.Position.Z
-                        pos_x = pos_x + (target.Character.HumanoidRootPart.Velocity.X / 1.5)
-                        pos_y = pos_y + (target.Character.HumanoidRootPart.Velocity.Y / 1.5)
-                        pos_z = pos_z + (target.Character.HumanoidRootPart.Velocity.Z / 1.5)
+                        local pos_x = target.Character.Head.Position.X
+                        local pos_y = target.Character.Head.Position.Y
+                        local pos_z = target.Character.Head.Position.Z
+                        pos_x = pos_x + (target.Character.Head.Velocity.X / 1.5)
+                        pos_y = pos_y + (target.Character.Head.Velocity.Y / 1.5)
+                        pos_z = pos_z + (target.Character.Head.Velocity.Z / 1.5)
                         root.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), 0, 0)
                     end
 
