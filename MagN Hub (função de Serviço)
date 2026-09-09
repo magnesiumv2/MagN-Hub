@@ -737,6 +737,5 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     
     return oldNamecall(self, ...)
 end
-end
 })
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
