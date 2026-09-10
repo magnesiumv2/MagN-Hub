@@ -414,6 +414,58 @@ setupButtonScript()
 end
 })
 
+local BombActive = false
+
+Tab:AddToggle({
+    Name = "Lag com Bomba",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            BombActive = true
+
+            local Player = game.Players.LocalPlayer
+            local Character = Player.Character or Player.CharacterAdded:Wait()
+            local RootPart = Character:WaitForChild("HumanoidRootPart")
+            local WorkspaceService = game:GetService("Workspace")
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local Bomb = WorkspaceService:WaitForChild("WorkspaceCom"):WaitForChild("001_CriminalWeapons"):WaitForChild("GiveTools"):WaitForChild("Bomb")
+
+            task.spawn(function()
+                while BombActive do
+                    if Bomb and RootPart then
+                        RootPart.CFrame = Bomb.CFrame
+                        fireclickdetector(Bomb.ClickDetector) -- Aciona o ClickDetector da bomba
+                        task.wait(0.1) -- Delay mínimo para evitar travamentos
+                    else
+                        task.wait(0.1
+                    end
+                end
+            end)
+
+            task.spawn(function()
+                while BombActive do
+                    if Bomb and RootPart then
+                        local VirtualInputManager = game:GetService("VirtualInputManager")
+                        VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0) 
+                        task.wait(1.5)
+                        VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0) 
+
+                        -- Executa o FireServer com o nome do jogador
+                        local args = {
+                            [1] = "Bomb" .. Player.Name -- Usa o nome do jogador atual
+                        }
+                        ReplicatedStorage:WaitForChild("RE"):WaitForChild("1Blo1wBomb1sServe1r"):FireServer(unpack(args))
+                    end
+                    task.wait(1.5) -- Intervalo de 1 segundo para clique e FireServer
+                end
+            end)
+        else
+            -- Desativando a funcionalidade
+            BombActive = false
+        end
+    end
+})
+
 local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://11415789819" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
