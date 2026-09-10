@@ -416,7 +416,7 @@ end
 
 local BombActive = false
 
-Tab:AddToggle({
+BossScript:AddToggle({
     Name = "Lag com Bomba",
     Default = false,
     Callback = function(Value)
