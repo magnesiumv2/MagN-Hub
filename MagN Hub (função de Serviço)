@@ -437,7 +437,7 @@ BossScript:AddToggle({
                         fireclickdetector(Bomb.ClickDetector) -- Aciona o ClickDetector da bomba
                         task.wait(0.1) -- Delay mínimo para evitar travamentos
                     else
-                        task.wait(0.1
+                        task.wait(0.1)
                     end
                 end
             end)
