@@ -676,33 +676,12 @@ local function FlingBall(target)
         end
         repeat task.wait() until backpack:FindFirstChild("SoccerBall")
         backpack.SoccerBall.Parent = character
-        
-        -- Procura por qualquer bola que comece com "Soccer" em vez de usar o nome do jogador
-        local foundBall = nil
-        repeat 
-            for _, v in pairs(ServerBalls:GetChildren()) do
-                if string.match(v.Name, "^Soccer") then
-                    foundBall = v
-                    break
-                end
-            end
-            task.wait() 
-        until foundBall
-        
+        repeat task.wait() until ServerBalls:FindFirstChild("Soccer" .. player.Name)
         character.SoccerBall.Parent = backpack
-        return foundBall
+        return ServerBalls:FindFirstChild("Soccer" .. player.Name)
     end
 
-    -- Procura por uma bola existente ou chama a função para pegar uma nova
-    local Ball = nil
-    for _, v in pairs(ServerBalls:GetChildren()) do
-        if string.match(v.Name, "^Soccer") then
-            Ball = v
-            break
-        end
-    end
-    Ball = Ball or GetBall()
-
+    local Ball = ServerBalls:FindFirstChild("Soccer" .. player.Name) or GetBall()
     Ball.CanCollide = false
     Ball.Massless = true
     Ball.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0, 0)
@@ -725,40 +704,28 @@ local function FlingBall(target)
             bv.Parent = Ball
 
             workspace.CurrentCamera.CameraSubject = thum
-            
-            -- Variáveis para controlar o movimento suave de 0.5 segundos
-            local duration = 0.5
-            local startCFrame = Ball.CFrame
-            local startTime = tick()
-
+            local StartTime = os.time()
             repeat
-                local elapsed = tick() - startTime
-                local alpha = math.clamp(elapsed / duration, 0, 1) -- Vai de 0 a 1 em 0.5 segundos
-
-                -- Calcula a posição final com a previsão do alvo
+                if troot.Velocity.Magnitude > 0 then
+                -- Cálculo da posição ajustada com base na velocidade do alvo
                 local pos_x = troot.Position.X + (troot.Velocity.X / 1.5)
                 local pos_y = troot.Position.Y + (troot.Velocity.Y / 1.5)
                 local pos_z = troot.Position.Z + (troot.Velocity.Z / 1.5)
-                local targetPosition = Vector3.new(pos_x, pos_y, pos_z)
-                
-                -- Se o alvo estiver parado, mira direto em uma parte válida
-                if troot.Velocity.Magnitude <= 0 then
-                    for i, v in pairs(tchar:GetChildren()) do
-                        if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
-                            targetPosition = v.Position
-                            break
-                        end
-                    end
-                end
 
-                -- Interpola (suaviza) o CFrame da bola em direção ao alvo baseado no tempo decorrido
-                local targetCFrame = CFrame.new(targetPosition)
-                Ball.CFrame = startCFrame:Lerp(targetCFrame, alpha)
+                -- Posiciona a bola diretamente na posição ajustada
+                local position = Vector3.new(pos_x, pos_y, pos_z)
+                Ball.CFrame = CFrame.new(position)
                 Ball.Orientation += Vector3.new(45, 60, 30)
-
-                task.wait(1/60) -- Frequência de atualização padrão para movimentos visuais
-            until alpha >= 1 or troot.Velocity.Magnitude > 1000 or thum.Health <= 0 or not tchar:IsDescendantOf(workspace) or target.Parent ~= players
-            
+else
+for i, v in pairs(tchar:GetChildren()) do
+if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
+Ball.CFrame = v.CFrame
+task.wait(1/6000)
+end
+end
+end
+                task.wait(1/6000)
+            until troot.Velocity.Magnitude > 1000 or thum.Health <= 0 or not tchar:IsDescendantOf(workspace) or target.Parent ~= players
             workspace.CurrentCamera.CameraSubject = humanoid
         end
     end
