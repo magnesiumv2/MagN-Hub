@@ -794,6 +794,71 @@ toggleAntiSit()
 end
 })
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local antiFlingActive = false
+local stepConnection = nil
+
+-- Mecanismo Central do Anti-Fling ( Brookhaven / Fling Ball Focus )
+local function runAntiFling()
+    local myChar = LocalPlayer.Character
+    if not myChar then return end
+
+    -- 1. Anular a capacidade de empurrão físico de outros avatares
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            for _, part in ipairs(p.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                    -- Reduz a densidade para 0.01 (Impede a transferência de força elástica)
+                    pcall(function()
+                        part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
+                        part.Velocity = Vector3.zero
+                        part.RotVelocity = Vector3.zero
+                    end)
+                end
+            end
+        end
+    end
+
+    -- 2. Detectar e quebrar esferas/física invisível de Fling Ball
+    for _, item in ipairs(workspace:GetDescendants()) do
+        if item:IsA("BasePart") and not item.Anchored and not item:IsDescendantOf(myChar) then
+            -- Se for uma esfera física solta ou um objeto com velocidade linear/angular absurda
+            if item:IsA("Part") and (item.Shape == Enum.PartType.Ball or item.Name:lower():find("ball")) then
+                item.CanCollide = false
+            elseif item.Velocity.Magnitude > 35 or item.RotVelocity.Magnitude > 35 then
+                item.CanCollide = false
+            end
+        end
+    end
+end
+
+-- Chamada do Toggle integrada à sua interface existente
+Anti:AddToggle({
+    Name = "Anti Fling Ball",
+    Default = false,
+    Callback = function(Value)
+        antiFlingActive = Value
+        
+        if antiFlingActive then
+            -- Ativa o escudo no motor de física
+            if stepConnection then stepConnection:Disconnect() end
+            stepConnection = RunService.Stepped:Connect(function()
+                pcall(runAntiFling)
+            end)
+        else
+            -- Desliga o loop com segurança ao desativar o botão
+            if stepConnection then
+                stepConnection:Disconnect()
+                stepConnection = nil
+            end
+        end
+    end
+})
+
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
 wait(0.5)
 game:GetService("Players").LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Seated, true)
