@@ -676,12 +676,33 @@ local function FlingBall(target)
         end
         repeat task.wait() until backpack:FindFirstChild("SoccerBall")
         backpack.SoccerBall.Parent = character
-        repeat task.wait() until ServerBalls:FindFirstChild("Soccer" .. player.Name)
+        
+        -- Procura por qualquer bola que comece com "Soccer" em vez de usar o nome do jogador
+        local foundBall = nil
+        repeat 
+            for _, v in pairs(ServerBalls:GetChildren()) do
+                if string.match(v.Name, "^Soccer") then
+                    foundBall = v
+                    break
+                end
+            end
+            task.wait() 
+        until foundBall
+        
         character.SoccerBall.Parent = backpack
-        return ServerBalls:FindFirstChild("Soccer" .. player.Name)
+        return foundBall
     end
 
-    local Ball = ServerBalls:FindFirstChild("Soccer" .. player.Name) or GetBall()
+    -- Procura por uma bola existente ou chama a função para pegar uma nova
+    local Ball = nil
+    for _, v in pairs(ServerBalls:GetChildren()) do
+        if string.match(v.Name, "^Soccer") then
+            Ball = v
+            break
+        end
+    end
+    Ball = Ball or GetBall()
+
     Ball.CanCollide = false
     Ball.Massless = true
     Ball.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0, 0)
@@ -707,23 +728,23 @@ local function FlingBall(target)
             local StartTime = os.time()
             repeat
                 if troot.Velocity.Magnitude > 0 then
-                -- Cálculo da posição ajustada com base na velocidade do alvo
-                local pos_x = troot.Position.X + (troot.Velocity.X / 1.5)
-                local pos_y = troot.Position.Y + (troot.Velocity.Y / 1.5)
-                local pos_z = troot.Position.Z + (troot.Velocity.Z / 1.5)
+                    -- Cálculo da posição ajustada com base na velocidade do alvo
+                    local pos_x = troot.Position.X + (troot.Velocity.X / 1.5)
+                    local pos_y = troot.Position.Y + (troot.Velocity.Y / 1.5)
+                    local pos_z = troot.Position.Z + (troot.Velocity.Z / 1.5)
 
-                -- Posiciona a bola diretamente na posição ajustada
-                local position = Vector3.new(pos_x, pos_y, pos_z)
-                Ball.CFrame = CFrame.new(position)
-                Ball.Orientation += Vector3.new(45, 60, 30)
-else
-for i, v in pairs(tchar:GetChildren()) do
-if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
-Ball.CFrame = v.CFrame
-task.wait(1/6000)
-end
-end
-end
+                    -- Posiciona a bola diretamente na posição ajustada
+                    local position = Vector3.new(pos_x, pos_y, pos_z)
+                    Ball.CFrame = CFrame.new(position)
+                    Ball.Orientation += Vector3.new(45, 60, 30)
+                else
+                    for i, v in pairs(tchar:GetChildren()) do
+                        if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
+                            Ball.CFrame = v.CFrame
+                            task.wait(1/6000)
+                        end
+                    end
+                end
                 task.wait(1/6000)
             until troot.Velocity.Magnitude > 1000 or thum.Health <= 0 or not tchar:IsDescendantOf(workspace) or target.Parent ~= players
             workspace.CurrentCamera.CameraSubject = humanoid
