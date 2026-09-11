@@ -720,7 +720,7 @@ else
 for i, v in pairs(tchar:GetChildren()) do
 if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
 Ball.CFrame = v.CFrame
-task.wait(0.00001)
+task.wait(1/3000)
 end
 end
 end
