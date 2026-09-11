@@ -794,22 +794,16 @@ toggleAntiSit()
 end
 })
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
 
 local antiFlingActive = false
 local physicsConnection = nil
 local folderSignalConnection = nil
-local playerLoopActive = false
 
--- Tabela para gerenciar partes daquela pasta que perderão a colisão
-local trackedTargetParts = {}
+-- Tabela para gerenciar as partes da pasta que perderão a colisão
+local trackedSoccerParts = {}
 
--- Identificação do SEU objeto legítimo (Não perderá colisão de jeito nenhum)
-local mySoccerObjectName = LocalPlayer.Name .. "Soccer"
-
--- Caminho seguro para a pasta alvo
+-- Caminho direto para a pasta alvo
 local function getSoccerFolder()
     local workspaceCom = workspace:FindFirstChild("WorkspaceCom")
     if workspaceCom then
@@ -818,69 +812,24 @@ local function getSoccerFolder()
     return nil
 end
 
--- Função leve para analisar se o objeto pertence à pasta e deve perder colisão
+-- Adiciona a parte na lista de monitoramento de colisão se ela pertencer à pasta
 local function checkPart(item)
     if not antiFlingActive or not item:IsA("BasePart") then return end
     
-    -- BLINDAGEM MÁXIMA: Se for o SEU objeto Soccer ou seu personagem, ignora e NÃO tira a física
-    if item.Name == mySoccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(mySoccerObjectName)) then
-        return
-    end
-    
-    local myChar = LocalPlayer.Character
-    if myChar and item:IsDescendantOf(myChar) then
-        return
-    end
-
-    -- Se o item estiver dentro da pasta de SoccerBalls, adiciona à lista para desligar colisão
     local soccerFolder = getSoccerFolder()
     if soccerFolder and item:IsDescendantOf(soccerFolder) then
-        if not item.Anchored then
-            trackedTargetParts[item] = true
-        end
+        trackedSoccerParts[item] = true
     end
 end
 
--- Escudo de física ultra-rápido rodando na renderização nativa (Sem lag de CPU)
-local function fastPhysicsShield()
-    local myChar = LocalPlayer.Character
-    if not myChar then return end
-
-    -- Remove a colisão de todas as SoccerBalls da pasta rastreada
-    for item in pairs(trackedTargetParts) do
+-- Aplica CanCollide = false continuamente na fase física do motor (Garante que nada reative)
+local function applyNoCollision()
+    for item in pairs(trackedSoccerParts) do
         if item and item.Parent then
-            -- Garantia redundante de segurança para o seu objeto e seu personagem
-            if item.Name ~= mySoccerObjectName and not item:IsDescendantOf(myChar) then
-                item.CanCollide = false
-            end
+            item.CanCollide = false
         else
-            trackedTargetParts[item] = nil -- Limpeza de memória se o item sumir
+            trackedSoccerParts[item] = nil -- Limpeza automática se o objeto for deletado
         end
-    end
-end
-
--- Loop de segundo plano para anular empurrões de avatares de outros jogadores
-local function startPlayerPhysicsLoop()
-    playerLoopActive = true
-    while antiFlingActive and playerLoopActive do
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                for _, part in ipairs(p.Character:GetDescendants()) do
-                    -- Desativa colisão dos corpos dos outros jogadores para evitar flings corporais
-                    if part:IsA("BasePart") and part.Name ~= mySoccerObjectName then
-                        part.CanCollide = false
-                        pcall(function()
-                            part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
-                            if part.Velocity.Magnitude > 35 or part.RotVelocity.Magnitude > 35 then
-                                part.Velocity = Vector3.zero
-                                part.RotVelocity = Vector3.zero
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-        task.wait(0.3) -- Roda de forma suave a cada 300ms (Mantém 60 FPS estáveis)
     end
 end
 
@@ -892,32 +841,28 @@ Anti:AddToggle({
         antiFlingActive = Value
         
         if antiFlingActive then
-            table.clear(trackedTargetParts)
+            table.clear(trackedSoccerParts)
             
-            -- 1. Indexação inicial apenas dos itens que já estão na pasta (Evita ler o mapa inteiro)
             local soccerFolder = getSoccerFolder()
             if soccerFolder then
+                -- 1. Capta tudo o que já está dentro da pasta no momento em que ligou
                 for _, item in ipairs(soccerFolder:GetDescendants()) do
                     checkPart(item)
                 end
                 
-                -- 2. Escuta de sinais focada APENAS na pasta específica (Performance otimizada)
+                -- 2. Escuta de forma leve apenas a entrada de novos objetos na pasta
                 folderSignalConnection = soccerFolder.DescendantAdded:Connect(function(item)
                     task.defer(checkPart, item)
                 end)
             end
             
-            -- 3. Conecta o escudo de colisão na fase física do motor
-            physicsConnection = RunService.Stepped:Connect(fastPhysicsShield)
-            
-            -- 4. Inicia verificação leve dos outros jogadores
-            task.spawn(startPlayerPhysicsLoop)
+            -- 3. Mantém a colisão desligada sincronizado com o motor de física
+            physicsConnection = RunService.Stepped:Connect(applyNoCollision)
         else
-            -- Limpeza completa do sistema para economizar memória do client ao desligar
-            playerLoopActive = false
+            -- Desliga o sistema limpando a memória do Roblox com total segurança
             if physicsConnection then physicsConnection:Disconnect(); physicsConnection = nil end
             if folderSignalConnection then folderSignalConnection:Disconnect(); folderSignalConnection = nil end
-            table.clear(trackedTargetParts)
+            table.clear(trackedSoccerParts)
         end
     end
 })
