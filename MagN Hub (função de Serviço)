@@ -803,18 +803,18 @@ local physicsConnection = nil
 local signalConnection = nil
 local playerLoopActive = false
 
--- Tabela para gerenciar partes perigosas externas
-local trackedFlingParts = {}
+-- Tabela para gerenciar partes que perderão a colisão
+local trackedTargetParts = {}
 
--- String exata do seu objeto (Ex: se seu nome for Player1, será "Player1Soccer")
-local soccerObjectName = LocalPlayer.Name .. "Soccer"
+-- Identificação do SEU objeto legítimo (Não será afetado)
+local mySoccerObjectName = LocalPlayer.Name .. "Soccer"
 
--- Função interna para validar e marcar partes perigosas de terceiros
+-- Função leve para analisar se um objeto deve ter a colisão desativada
 local function checkPart(item)
     if not antiFlingActive or not item:IsA("BasePart") then return end
     
-    -- BLINDAGEM MÁXIMA: Se for o SEU objeto Soccer ou parte do seu personagem, ignora completamente
-    if item.Name == soccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(soccerObjectName)) then
+    -- BLINDAGEM MÁXIMA: Se for o SEU objeto Soccer ou seu personagem, ignora e NÃO tira a física
+    if item.Name == mySoccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(mySoccerObjectName)) then
         return
     end
     
@@ -823,41 +823,42 @@ local function checkPart(item)
         return
     end
 
-    -- Se não estiver ancorado e parecer uma Fling Ball (esferas ou objetos com "ball" no nome)
-    if not item.Anchored then
-        if item:IsA("Part") and (item.Shape == Enum.PartType.Ball or item.Name:lower():find("ball")) then
-            trackedFlingParts[item] = true
+    -- DETECÇÃO ALVO: Se o nome for parecido com "SoccerBall", "Ball" ou se for uma esfera física externa
+    local itemNameLower = item.Name:lower()
+    if itemNameLower:find("soccer") or itemNameLower:find("ball") or (item:IsA("Part") and item.Shape == Enum.PartType.Ball) then
+        if not item.Anchored then
+            trackedTargetParts[item] = true
         end
     end
 end
 
--- Escudo físico de altíssima performance (Não usa loops varrendo o mapa)
+-- Escudo de física ultra-rápido rodando na renderização nativa (Sem lag de CPU)
 local function fastPhysicsShield()
     local myChar = LocalPlayer.Character
     if not myChar then return end
 
-    -- Remove colisão apenas das partes que foram marcadas como Fling Balls externas
-    for item in pairs(trackedFlingParts) do
+    -- Remove a colisão de todas as SoccerBalls e esferas rastreadas de terceiros
+    for item in pairs(trackedTargetParts) do
         if item and item.Parent then
-            -- Verificação redundante para garantir que o seu objeto Soccer NUNCA perca física
-            if item.Name ~= soccerObjectName and not item:IsDescendantOf(myChar) then
+            -- Garantia redundante de segurança para o seu objeto
+            if item.Name ~= mySoccerObjectName and not item:IsDescendantOf(myChar) then
                 item.CanCollide = false
             end
         else
-            trackedFlingParts[item] = nil -- Limpeza automática de memória
+            trackedTargetParts[item] = nil -- Limpeza de memória automática se o item sumir
         end
     end
 end
 
--- Gerenciador espaçado para tratar avatares de outros players (Evita congelamento do Client)
+-- Loop de segundo plano para anular empurrões de avatares de outros jogadores
 local function startPlayerPhysicsLoop()
     playerLoopActive = true
     while antiFlingActive and playerLoopActive do
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
-                -- Modifica colisões dos outros players sem tocar nos seus objetos
                 for _, part in ipairs(p.Character:GetDescendants()) do
-                    if part:IsA("BasePart") and part.Name ~= soccerObjectName then
+                    -- Desativa colisão dos corpos dos outros jogadores para evitar flings corporais
+                    if part:IsA("BasePart") and part.Name ~= mySoccerObjectName then
                         part.CanCollide = false
                         pcall(function()
                             part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
@@ -870,7 +871,7 @@ local function startPlayerPhysicsLoop()
                 end
             end
         end
-        task.wait(0.3) -- Intervalo seguro de 300ms que zera o uso de CPU
+        task.wait(0.3) -- Roda de forma suave a cada 300ms (Mantém 60 FPS estáveis)
     end
 end
 
@@ -882,29 +883,29 @@ Anti:AddToggle({
         antiFlingActive = Value
         
         if antiFlingActive then
-            table.clear(trackedFlingParts)
+            table.clear(trackedTargetParts)
             
-            -- 1. Indexa instantaneamente as esferas que já estão no mapa antes do script ligar
+            -- 1. Indexação inicial instantânea e única das partes do mapa
             for _, item in ipairs(workspace:GetDescendants()) do
                 checkPart(item)
             end
             
-            -- 2. Escuta de forma leve a entrada de novos objetos sem travar os frames
+            -- 2. Escuta de sinais para novos objetos criados de forma dinâmica
             signalConnection = workspace.DescendantAdded:Connect(function(item)
                 task.defer(checkPart, item)
             end)
             
-            -- 3. Conecta a barreira física no loop de renderização nativo
+            -- 3. Conecta o escudo de colisão na fase física do motor
             physicsConnection = RunService.Stepped:Connect(fastPhysicsShield)
             
-            -- 4. Inicia o loop leve de verificação de outros jogadores
+            -- 4. Inicia verificação leve dos outros jogadores
             task.spawn(startPlayerPhysicsLoop)
         else
-            -- Desliga o sistema limpando a memória do Roblox com total segurança
+            -- Limpeza completa do sistema para economizar memória do client ao desligar
             playerLoopActive = false
             if physicsConnection then physicsConnection:Disconnect(); physicsConnection = nil end
             if signalConnection then signalConnection:Disconnect(); signalConnection = nil end
-            table.clear(trackedFlingParts)
+            table.clear(trackedTargetParts)
         end
     end
 })
