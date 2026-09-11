@@ -799,40 +799,89 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local antiFlingActive = false
-local stepConnection = nil
+local physicsConnection = nil
+local loopConnection = nil
+local signalConnection = nil
 
--- Mecanismo Central do Anti-Fling ( Brookhaven / Fling Ball Focus )
-local function runAntiFling()
+-- Tabela para rastrear e congelar partes perigosas sem travar o loop principal
+local trackedFlingParts = {}
+
+-- String correspondente ao nome do objeto de futebol do jogador (Ex: "NomeDoJogadorSoccer")
+local soccerObjectName = LocalPlayer.Name .. "Soccer"
+
+local function checkPart(item)
+    -- FILTRO: Ignora completamente o objeto Soccer do próprio jogador
+    if item.Name == soccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(soccerObjectName)) then
+        return
+    end
+
+    if item:IsA("BasePart") and not item.Anchored and not item:IsDescendantOf(LocalPlayer.Character or workspace) then
+        if item:IsA("Part") and (item.Shape == Enum.PartType.Ball or item.Name:lower():find("ball")) then
+            trackedFlingParts[item] = true
+        end
+    end
+end
+
+-- Mecanismo de alta velocidade simplificado (apenas altera colisões na fase física)
+local function fastPhysicsShield()
     local myChar = LocalPlayer.Character
     if not myChar then return end
 
-    -- 1. Anular a capacidade de empurrão físico de outros avatares
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            for _, part in ipairs(p.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                    -- Reduz a densidade para 0.01 (Impede a transferência de força elástica)
-                    pcall(function()
-                        part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
-                        part.Velocity = Vector3.zero
-                        part.RotVelocity = Vector3.zero
-                    end)
+    -- Remove colisão apenas das partes identificadas como Fling Balls
+    for item in pairs(trackedFlingParts) do
+        if item and item.Parent then
+            -- Garante mais uma vez que o objeto Soccer não perca colisão por engano
+            if item.Name ~= soccerObjectName then
+                item.CanCollide = false
+            end
+        else
+            trackedFlingParts[item] = nil -- Limpa da memória se a parte sumir
+        end
+    end
+end
+
+-- Loop de segundo plano para monitorar jogadores e objetos velozes (Roda sem pesar na CPU)
+local function backgroundCheck()
+    while antiFlingActive do
+        local myChar = LocalPlayer.Character
+        if myChar then
+            -- 1. Trata colisões e forças dos outros players de forma espaçada
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character then
+                    for _, part in ipairs(p.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            -- Ignora caso o player de alguma forma interaja com uma parte legítima do seu Soccer
+                            if part.Name ~= soccerObjectName then
+                                part.CanCollide = false
+                                pcall(function()
+                                    part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
+                                    if part.Velocity.Magnitude > 35 or part.RotVelocity.Magnitude > 35 then
+                                        part.Velocity = Vector3.zero
+                                        part.RotVelocity = Vector3.zero
+                                    end
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- 2. Procura por objetos avulsos voando muito rápido pelo cenário
+            for _, item in ipairs(workspace:GetDescendants()) do
+                -- FILTRO CRÍTICO: Não mexe nas propriedades do seu objeto Soccer de jeito nenhum
+                if item.Name == soccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(soccerObjectName)) then
+                    continue
+                end
+
+                if item:IsA("BasePart") and not item.Anchored and not item:IsDescendantOf(myChar) then
+                    if item.Velocity.Magnitude > 35 or item.RotVelocity.Magnitude > 35 then
+                        item.CanCollide = false
+                        trackedFlingParts[item] = true
+                    end
                 end
             end
         end
-    end
-
-    -- 2. Detectar e quebrar esferas/física invisível de Fling Ball
-    for _, item in ipairs(workspace:GetDescendants()) do
-        if item:IsA("BasePart") and not item.Anchored and not item:IsDescendantOf(myChar) then
-            -- Se for uma esfera física solta ou um objeto com velocidade linear/angular absurda
-            if item:IsA("Part") and (item.Shape == Enum.PartType.Ball or item.Name:lower():find("ball")) then
-                item.CanCollide = false
-            elseif item.Velocity.Magnitude > 35 or item.RotVelocity.Magnitude > 35 then
-                item.CanCollide = false
-            end
-        end
+        task.wait(0.2) -- Pausa de 200ms para evitar gargalo e manter 60 FPS estáveis
     end
 end
 
@@ -844,17 +893,23 @@ Anti:AddToggle({
         antiFlingActive = Value
         
         if antiFlingActive then
-            -- Ativa o escudo no motor de física
-            if stepConnection then stepConnection:Disconnect() end
-            stepConnection = RunService.Stepped:Connect(function()
-                pcall(runAntiFling)
+            table.clear(trackedFlingParts)
+            
+            -- 1. Captura instantânea e eficiente de novas partes geradas no mapa
+            signalConnection = workspace.DescendantAdded:Connect(function(item)
+                task.defer(checkPart, item)
             end)
+            
+            -- 2. Ativa o escudo leve e direto na fase física do motor do jogo
+            physicsConnection = RunService.Stepped:Connect(fastPhysicsShield)
+            
+            -- 3. Inicia o monitoramento inteligente em segundo plano
+            task.spawn(backgroundCheck)
         else
-            -- Desliga o loop com segurança ao desativar o botão
-            if stepConnection then
-                stepConnection:Disconnect()
-                stepConnection = nil
-            end
+            -- Desliga todas as conexões com segurança para liberar memória do client
+            if physicsConnection then physicsConnection:Disconnect(); physicsConnection = nil end
+            if signalConnection then signalConnection:Disconnect(); signalConnection = nil end
+            table.clear(trackedFlingParts)
         end
     end
 })
