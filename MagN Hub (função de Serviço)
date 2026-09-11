@@ -800,16 +800,25 @@ local LocalPlayer = Players.LocalPlayer
 
 local antiFlingActive = false
 local physicsConnection = nil
-local signalConnection = nil
+local folderSignalConnection = nil
 local playerLoopActive = false
 
--- Tabela para gerenciar partes que perderão a colisão
+-- Tabela para gerenciar partes daquela pasta que perderão a colisão
 local trackedTargetParts = {}
 
--- Identificação do SEU objeto legítimo (Não será afetado)
+-- Identificação do SEU objeto legítimo (Não perderá colisão de jeito nenhum)
 local mySoccerObjectName = LocalPlayer.Name .. "Soccer"
 
--- Função leve para analisar se um objeto deve ter a colisão desativada
+-- Caminho seguro para a pasta alvo
+local function getSoccerFolder()
+    local workspaceCom = workspace:FindFirstChild("WorkspaceCom")
+    if workspaceCom then
+        return workspaceCom:FindFirstChild("001_SoccerBalls")
+    end
+    return nil
+end
+
+-- Função leve para analisar se o objeto pertence à pasta e deve perder colisão
 local function checkPart(item)
     if not antiFlingActive or not item:IsA("BasePart") then return end
     
@@ -823,9 +832,9 @@ local function checkPart(item)
         return
     end
 
-    -- DETECÇÃO ALVO: Se o nome for parecido com "SoccerBall", "Ball" ou se for uma esfera física externa
-    local itemNameLower = item.Name:lower()
-    if itemNameLower:find("soccer") or itemNameLower:find("ball") or (item:IsA("Part") and item.Shape == Enum.PartType.Ball) then
+    -- Se o item estiver dentro da pasta de SoccerBalls, adiciona à lista para desligar colisão
+    local soccerFolder = getSoccerFolder()
+    if soccerFolder and item:IsDescendantOf(soccerFolder) then
         if not item.Anchored then
             trackedTargetParts[item] = true
         end
@@ -837,15 +846,15 @@ local function fastPhysicsShield()
     local myChar = LocalPlayer.Character
     if not myChar then return end
 
-    -- Remove a colisão de todas as SoccerBalls e esferas rastreadas de terceiros
+    -- Remove a colisão de todas as SoccerBalls da pasta rastreada
     for item in pairs(trackedTargetParts) do
         if item and item.Parent then
-            -- Garantia redundante de segurança para o seu objeto
+            -- Garantia redundante de segurança para o seu objeto e seu personagem
             if item.Name ~= mySoccerObjectName and not item:IsDescendantOf(myChar) then
                 item.CanCollide = false
             end
         else
-            trackedTargetParts[item] = nil -- Limpeza de memória automática se o item sumir
+            trackedTargetParts[item] = nil -- Limpeza de memória se o item sumir
         end
     end
 end
@@ -877,7 +886,7 @@ end
 
 -- Chamada do Toggle integrada à sua interface existente
 Anti:AddToggle({
-    Name = "Anti Fling Ball",
+    Name = "Anti Fling Ball (Folder)",
     Default = false,
     Callback = function(Value)
         antiFlingActive = Value
@@ -885,15 +894,18 @@ Anti:AddToggle({
         if antiFlingActive then
             table.clear(trackedTargetParts)
             
-            -- 1. Indexação inicial instantânea e única das partes do mapa
-            for _, item in ipairs(workspace:GetDescendants()) do
-                checkPart(item)
+            -- 1. Indexação inicial apenas dos itens que já estão na pasta (Evita ler o mapa inteiro)
+            local soccerFolder = getSoccerFolder()
+            if soccerFolder then
+                for _, item in ipairs(soccerFolder:GetDescendants()) do
+                    checkPart(item)
+                end
+                
+                -- 2. Escuta de sinais focada APENAS na pasta específica (Performance otimizada)
+                folderSignalConnection = soccerFolder.DescendantAdded:Connect(function(item)
+                    task.defer(checkPart, item)
+                end)
             end
-            
-            -- 2. Escuta de sinais para novos objetos criados de forma dinâmica
-            signalConnection = workspace.DescendantAdded:Connect(function(item)
-                task.defer(checkPart, item)
-            end)
             
             -- 3. Conecta o escudo de colisão na fase física do motor
             physicsConnection = RunService.Stepped:Connect(fastPhysicsShield)
@@ -904,7 +916,7 @@ Anti:AddToggle({
             -- Limpeza completa do sistema para economizar memória do client ao desligar
             playerLoopActive = false
             if physicsConnection then physicsConnection:Disconnect(); physicsConnection = nil end
-            if signalConnection then signalConnection:Disconnect(); signalConnection = nil end
+            if folderSignalConnection then folderSignalConnection:Disconnect(); folderSignalConnection = nil end
             table.clear(trackedTargetParts)
         end
     end
