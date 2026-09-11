@@ -800,7 +800,6 @@ local LocalPlayer = Players.LocalPlayer
 
 local antiFlingActive = false
 local physicsConnection = nil
-local loopConnection = nil
 local signalConnection = nil
 
 -- Tabela para rastrear e congelar partes perigosas sem travar o loop principal
@@ -810,28 +809,37 @@ local trackedFlingParts = {}
 local soccerObjectName = LocalPlayer.Name .. "Soccer"
 
 local function checkPart(item)
-    -- FILTRO: Ignora completamente o objeto Soccer do próprio jogador
-    if item.Name == soccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(soccerObjectName)) then
+    local myChar = LocalPlayer.Character
+    
+    -- TRAVA DE SEGURANÇA 1: Ignora o objeto Soccer do próprio jogador
+    if item.Name == soccerObjectName or (myChar and item:IsDescendantOf(myChar)) then
         return
     end
 
-    if item:IsA("BasePart") and not item.Anchored and not item:IsDescendantOf(LocalPlayer.Character or workspace) then
+    -- TRAVA DE SEGURANÇA 2: Se o objeto foi criado por você ou está sob sua rede de simulação, ignora
+    if item:IsA("BasePart") and not item.Anchored then
+        if item:GetNetworkOwner() == LocalPlayer then
+            return -- Não mexe na física dos seus próprios objetos
+        end
+        
+        -- Só adiciona à lista se for uma esfera vinda de fora (Fling Ball de terceiros)
         if item:IsA("Part") and (item.Shape == Enum.PartType.Ball or item.Name:lower():find("ball")) then
-            trackedFlingParts[item] = true
+            -- Garante que não é um item que está dentro de um modelo seu no mapa
+            if not item:IsDescendantOf(workspace:FindFirstChild(soccerObjectName) or myChar) then
+                trackedFlingParts[item] = true
+            end
         end
     end
 end
 
--- Mecanismo de alta velocidade simplificado (apenas altera colisões na fase física)
 local function fastPhysicsShield()
     local myChar = LocalPlayer.Character
     if not myChar then return end
 
-    -- Remove colisão apenas das partes identificadas como Fling Balls
     for item in pairs(trackedFlingParts) do
         if item and item.Parent then
-            -- Garante mais uma vez que o objeto Soccer não perca colisão por engano
-            if item.Name ~= soccerObjectName then
+            -- Verificação redundante para blindar seus objetos contra bugs de colisão
+            if item.Name ~= soccerObjectName and not item:IsDescendantOf(myChar) and item:GetNetworkOwner() ~= LocalPlayer then
                 item.CanCollide = false
             end
         else
@@ -845,35 +853,32 @@ local function backgroundCheck()
     while antiFlingActive do
         local myChar = LocalPlayer.Character
         if myChar then
-            -- 1. Trata colisões e forças dos outros players de forma espaçada
+            -- 1. Trata colisões e forças apenas dos OUTROS players
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= LocalPlayer and p.Character then
                     for _, part in ipairs(p.Character:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            -- Ignora caso o player de alguma forma interaja com uma parte legítima do seu Soccer
-                            if part.Name ~= soccerObjectName then
-                                part.CanCollide = false
-                                pcall(function()
-                                    part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
-                                    if part.Velocity.Magnitude > 35 or part.RotVelocity.Magnitude > 35 then
-                                        part.Velocity = Vector3.zero
-                                        part.RotVelocity = Vector3.zero
-                                    end
-                                end)
-                            end
+                            part.CanCollide = false
+                            pcall(function()
+                                part.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.1, 1, 1)
+                                if part.Velocity.Magnitude > 35 or part.RotVelocity.Magnitude > 35 then
+                                    part.Velocity = Vector3.zero
+                                    part.RotVelocity = Vector3.zero
+                                end
+                            end)
                         end
                     end
                 end
             end
 
-            -- 2. Procura por objetos avulsos voando muito rápido pelo cenário
+            -- 2. Procura por objetos avulsos voando muito rápido pelo cenário (apenas de terceiros)
             for _, item in ipairs(workspace:GetDescendants()) do
-                -- FILTRO CRÍTICO: Não mexe nas propriedades do seu objeto Soccer de jeito nenhum
-                if item.Name == soccerObjectName or item:IsDescendantOf(workspace:FindFirstChild(soccerObjectName)) then
+                -- Se o objeto for seu, ignora completamente
+                if item.Name == soccerObjectName or (myChar and item:IsDescendantOf(myChar)) or item:GetNetworkOwner() == LocalPlayer then
                     continue
                 end
 
-                if item:IsA("BasePart") and not item.Anchored and not item:IsDescendantOf(myChar) then
+                if item:IsA("BasePart") and not item.Anchored then
                     if item.Velocity.Magnitude > 35 or item.RotVelocity.Magnitude > 35 then
                         item.CanCollide = false
                         trackedFlingParts[item] = true
@@ -881,7 +886,7 @@ local function backgroundCheck()
                 end
             end
         end
-        task.wait(0.2) -- Pausa de 200ms para evitar gargalo e manter 60 FPS estáveis
+        task.wait(0.2) -- Mantém o desempenho liso a 60 FPS
     end
 end
 
