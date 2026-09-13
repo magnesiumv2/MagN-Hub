@@ -469,7 +469,7 @@ BossScript:AddToggle({
 local BombActive = false
 
 BossScript:AddToggle({
-    Name = "Lagcom Bomba com Auto Drop 999",
+    Name = "Lag com Bomba com Auto Drop 200",
     Default = false,
     Callback = function(Value)
         if Value then
@@ -504,7 +504,7 @@ BossScript:AddToggle({
                         end
                         
                         -- Se atingir o limite de 999 bombas, dropa todas elas
-                        if bombCount >= 999 then
+                        if bombCount >= 200 then
                             -- Força o jogador a equipar e dropar cada bomba do inventário
                             for _, item in ipairs(Player.Backpack:GetChildren()) do
                                 if item.Name == "Bomb" and item:IsA("Tool") then
@@ -522,7 +522,7 @@ BossScript:AddToggle({
                             end
                         end
                     end
-                    task.wait(0.10) -- Delay exato de 0.90 segundos solicitado para evitar lag massivo
+                    task.wait(0.10-- Delay exato de 0.90 segundos solicitado para evitar lag massivo
                 end
             end)
 
