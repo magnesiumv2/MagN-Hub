@@ -866,6 +866,66 @@ Anti:AddToggle({
         end
     end
 })
+local function ChangeCarSpeedAndTurbo(speedValue, turboValue)
+    local player = game.Players.LocalPlayer
+    local car = workspace.Vehicles:FindFirstChild(player.Name .. "Car")
+
+    if car then
+        local body = car:FindFirstChild("Body").VehicleSeat
+        if body then
+            body.TopSpeed.Value = speedValue
+            body.Turbo.Value = turboValue
+            wait(0.1)
+            redzlib:MakeNotification({
+                Name = "Mafia Hub",
+                Content = "Done, You can Move Now!",
+                Time = 5
+            })
+        else
+            redzlib:MakeNotification({
+                Name = "Error",
+                Content = "Sit in car first!",
+                Time = 5
+            })
+        end
+    else
+        redzlib:MakeNotification({
+            Name = "Error",
+            Content = "Put a Car First!",
+            Time = 5
+        })
+    end
+end
+
+local Temp = Window:MakeTab({ Title = "Temporário, logo será removido", Icon = "Bomb" })
+Temp:AddTextBox({
+    Name = "Speed",
+    PlaceholderText = "50",
+    Callback = function(value)
+        local newSpeed = tonumber(value)
+        if newSpeed then
+            Speed = newSpeed
+        end
+    end
+})
+
+Temp:AddTextBox({
+    Name = "Turbo",
+    PlaceholderText = "50",
+    Callback = function(value)
+        local newTurbo = tonumber(value)
+        if newTurbo then
+            Turbo = newTurbo
+        end
+    end
+})
+
+Temp:AddButton({
+    Name = "Aplicar Velocidade, Turbo e drift",
+    Callback = function()
+        ChangeCarSpeedAndTurbo(Speed, Turbo)
+    end
+})
 
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
 wait(0.5)
