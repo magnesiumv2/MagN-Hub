@@ -877,8 +877,8 @@ local function ChangeCarSpeedAndTurbo(speedValue, turboValue)
             body.Turbo.Value = turboValue
             wait(0.1)
             redzlib:MakeNotification({
-                Name = "Mafia Hub",
-                Content = "Done, You can Move Now!",
+                Name = "Temp",
+                Content = "Temp",
                 Time = 5
             })
         else
