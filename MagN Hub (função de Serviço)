@@ -556,6 +556,90 @@ Tab:AddToggle({
     end
 })
 
+-- VERSÃO ADAPTADA PARA BOTÃO (BUTTON)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+
+local LocalPlayer = Players.LocalPlayer
+
+Tab:AddButton({
+    Name = "Kick All/ShutDown Server/Ataque de Solicitação",
+    Callback = function()
+        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local rootpart = character:WaitForChild("HumanoidRootPart")
+        local backpack = LocalPlayer:WaitForChild("Backpack")
+        local remoteStorage = ReplicatedStorage:WaitForChild("RE")
+        
+        -- 1. Loop de requisição de ferramentas
+        for m = 1, 535 do
+            local args1 = {
+                [1] = "PickingTools",
+                [2] = "FireHose"
+            }
+            local toolRemote = remoteStorage:FindFirstChild("1Too1l")
+            if toolRemote and toolRemote:IsA("RemoteFunction") then
+                toolRemote:InvokeServer(unpack(args1))
+            end
+            
+            -- Proteção para evitar travamentos caso ToolSound não seja um RemoteEvent válido
+            local fireHose = backpack:FindFirstChild("FireHose")
+            if fireHose and fireHose:FindFirstChild("ToolSound") then
+                local args2 = {
+                    [1] = "FireHose",
+                    [2] = "DestroyFireHose"
+                }
+                pcall(function()
+                    fireHose.ToolSound:FireServer(unpack(args2))
+                end)
+            end
+        end
+        
+        -- 2. Salvar posição antiga e teleportar para o Void
+        local oldcf = rootpart.CFrame
+        rootpart.CFrame = CFrame.new(999999999.414, -475, 999999999.414)
+        
+        -- Espera otimizada usando task.wait()
+        repeat task.wait() until rootpart.Parent == nil
+        repeat task.wait() until character:FindFirstChild("HumanoidRootPart")
+        
+        -- Retornar à posição antiga
+        rootpart.CFrame = oldcf
+        
+        StarterGui:SetCore("SendNotification", {
+            Title = "Script de Dupe",
+            Text = "Shutdown Concluído, Agora Vai Desligar",
+            Button1 = "Ok",
+            Duration = 5
+        })
+        
+        task.wait(0.1)
+        
+        -- 3. Equipar todas as FireHose da Backpack para o Personagem
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item.Name == "FireHose" and item:IsA("Tool") then
+                item.Parent = character
+            end
+        end
+        
+        task.wait(0.2)
+        
+        StarterGui:SetCore("SendNotification", {
+            Title = "Script de Dupe",
+            Text = "Iniciando duplicação, seja paciente",
+            Button1 = "Ok",
+            Duration = 5
+        })
+        
+        task.wait(0.5)
+        
+        -- Teleporte final de processamento
+        if character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = CFrame.new(9999, -475, 9999)
+        end
+    end
+})
+
 local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://11415789819" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
