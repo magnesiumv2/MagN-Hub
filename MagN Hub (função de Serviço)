@@ -468,7 +468,7 @@ BossScript:AddToggle({
 
 local BombActive = false
 
-BossScript:AddToggle({
+Tab:AddToggle({
     Name = "Lag com Bomba com Auto Drop 200",
     Default = false,
     Callback = function(Value)
@@ -522,7 +522,7 @@ BossScript:AddToggle({
                             end
                         end
                     end
-                    task.wait(0.10-- Delay exato de 0.90 segundos solicitado para evitar lag massivo
+                    task.wait(0.10) -- Delay exato de 0.90 segundos solicitado para evitar lag massivo
                 end
             end)
 
