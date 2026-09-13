@@ -473,7 +473,7 @@ local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
 
-Tab:AddButton({
+BossScript:AddButton({
     Name = "Kick All/ShutDown Server/Ataque de Solicitação",
     Callback = function()
         local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
