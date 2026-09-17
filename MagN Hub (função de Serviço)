@@ -614,74 +614,50 @@ BossScript:AddButton({
     end
 })
 
--- ====================================================================
--- CORREÇÃO: ATAQUE DE ABAJUR (TOGGLE)
--- ====================================================================
-local lampActive = false
+local seatSpamActive = false
+
 BossScript:AddToggle({
-    Name = "Ativar Ataque de Abajur",
+    Name = "Ativar Spam de Cadeira (Atrapalhar Alvo)",
     Default = false,
     Callback = function(state)
-        lampActive = state
+        seatSpamActive = state
         
-        if lampActive then
-            local target = Players:FindFirstChild(targetName)
-            if not target or not target.Character then
-                print("[MagN Hub]: Nenhum alvo válido selecionado no Dropdown Geral.")
-                lampActive = false
-                return
-            end
+        if seatSpamActive then
+            local target = game.Players:FindFirstChild(targetName)
+            local LocalPlayer = game.Players.LocalPlayer
+            if not target or target == LocalPlayer then seatSpamActive = false return end
             
             task.spawn(function()
-                while lampActive and target.Parent and target.Character do
+                while seatSpamActive and target.Parent and target.Character do
                     local root = target.Character:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        -- Posição colada no alvo
-                        local spawnPos = root.CFrame * CFrame.new(0, 0, -1)
-                        
-                        -- Loop forçado de 15 unidades
-                        for i = 1, 15 do
-                            -- CORREÇÃO DO REMOTE: Certifique-se de que o caminho abaixo bate com o seu Remote Spy!
-                            -- O Brookhaven geralmente exige os argumentos: (ID_Do_Prop, CFrame_Posicao)
+                    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+                    
+                    if root and humanoid then
+                        if humanoid.SeatPart == nil then
                             pcall(function()
-                                -- Exemplo técnico corrigido:
-                                -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeProps:FireServer("LampID", spawnPos)
+                                local cadeiraPos = root.CFrame * CFrame.new(0, -1, 0)
+                                -- Busca a ferramenta na mochila ou na mão
+                                local tool = LocalPlayer.Backpack:FindFirstChild("PropMaker") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("PropMaker"))
+                                if tool then
+                                    local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
+                                    if remote then
+                                        -- Utiliza uma cadeira padrão do inventário do Brookhaven (ex: "Chair")
+                                        remote:FireServer("Chair", cadeiraPos)
+                                    end
+                                end
+                             pcall(function()
+                                humanoid.Sit = false 
+                                -- Como o Brookhaven limpa props pelo botão do martelo, o reset do Sit já basta para o loop
                             end)
                         end
                     end
-                    task.wait(0.4) -- Tempo seguro para atualizar a perseguição se o alvo correr
+                    task.wait(0.2) -- Velocidade para travar as pernas
                 end
             end)
         end
     end
 })
 
--- ====================================================================
--- SEUS OUTROS BOTÕES (Exemplo: Crash Cliente)
--- ====================================================================
-BossScript:AddButton({
-    Name = "💥 Executar Instant Client Crash",
-    Callback = function()
-        local target = Players:FindFirstChild(targetName) -- Lendo a variável unificada
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            local targetCFrame = target.Character.HumanoidRootPart.CFrame
-            
-            print("[MagN Hub]: Crashando " .. target.Name)
-            for i = 1, 800 do
-                pcall(function()
-                    -- Seu remote de partículas/efeitos pesados do Brookhaven aqui
-                    -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeEfeitos:FireServer("FumaçaMotorID", targetCFrame)
-                end)
-            end
-        else
-            print("[MagN Hub]: Selecione um alvo no Dropdown Geral primeiro!")
-        end
-    end
-})
-
--- ====================================================================
--- CORREÇÃO DEFINITIVA: COUCH FREEZE (TOGGLE)
--- ====================================================================
 local couchFreezeActive = false
 local freezeLocation = nil
 
@@ -692,185 +668,130 @@ BossScript:AddToggle({
         couchFreezeActive = state
         
         if couchFreezeActive then
-            local target = Players:FindFirstChild(targetName) -- Usa a variável mestre do seu dropdown
-            local localPlayer = Players.LocalPlayer
+            local target = game.Players:FindFirstChild(targetName)
+            local localPlayer = game.Players.LocalPlayer
+            if not target or target == localPlayer then couchFreezeActive = false return end
             
-            -- Validações antes de iniciar o travamento
-            if not target or target == localPlayer then
-                print("[MagN Hub]: Selecione um alvo válido no Dropdown Geral primeiro!")
-                couchFreezeActive = false
-                return
-            end
-            
-            if not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                print("[MagN Hub]: Seu personagem não carregou completamente.")
-                couchFreezeActive = false
-                return
-            end
-            
-            -- Salva a localização exata de onde VOCÊ ativou o comando
+            -- Salva onde você está parado para ser a prisão
             freezeLocation = localPlayer.Character.HumanoidRootPart.CFrame
-            print("[MagN Hub]: Coordenada de prisão salva! Iniciando trava de física...")
             
-            -- Loop de alta velocidade em segundo plano para vencer qualquer tentativa de fuga
             task.spawn(function()
                 while couchFreezeActive and target.Parent and target.Character do
                     local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-                    
                     if humanoid then
-                        -- Passo 1: Se o mal-intencionado NÃO estiver sentado, força o spawn do sofá nele
+                        -- Se não estiver sentado, força o spawn do sofá usando o PropMaker
                         if humanoid.SeatPart == nil then
                             pcall(function()
-                                -- Substitua pelo caminho e ID do sofá real mapeado no seu Remote Spy
-                                -- Argumentos típicos do Brookhaven: (ID_Do_Sofá, CFrame_De_Spawn)
-                                -- game:GetService("ReplicatedStorage").CaminhoDoRemote:FireServer("SofaID", target.Character.HumanoidRootPart.CFrame)
+                                local tool = localPlayer.Backpack:FindFirstChild("PropMaker") or (localPlayer.Character and localPlayer.Character:FindFirstChild("PropMaker"))
+                                if tool then
+                                    local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
+                                    if remote then
+                                        -- Utiliza a string padrão de sofá do Brookhaven
+                                        remote:FireServer("Sofa", target.Character.HumanoidRootPart.CFrame)
+                                    end
+                                end
                             end)
                         end
-                        
-                        -- Passo 2: Se ele já estiver preso no assento, puxa a peça para a prisão fixa
+                        -- Se ele já sentou, segura o assento na coordenada fixa calculada localmente
                         if humanoid.SeatPart ~= nil and humanoid.SeatPart.Name == "Seat" then
                             pcall(function()
-                                local seatPart = humanoid.SeatPart
-                                
-                                -- Força a propriedade de rede e coordenada da peça localmente
-                                seatPart.CFrame = freezeLocation
-                                seatPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                                seatPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                                
-                                -- Se o assento fizer parte de um modelo de prop, move o modelo inteiro junto
-                                local model = seatPart.Parent
-                                if model and model:IsA("Model") then
-                                    model:MoveTo(freezeLocation.Position)
+                                humanoid.SeatPart.CFrame = freezeLocation
+                                humanoid.SeatPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                                if humanoid.SeatPart.Parent:IsA("Model") then
+                                    humanoid.SeatPart.Parent:MoveTo(freezeLocation.Position)
                                 end
                             end)
                         end
                     end
-                    
-                    task.wait(0.05) -- Loop ultra rápido (20 vezes por segundo) para impedir o movimento
+                    task.wait(0.05) -- Loop ultra rápido para cortar o WASD dele
                 end
+            end)
+        end
+    end
+})
+
+BossScript:AddButton({
+    Name = "💥 Executar Instant Client Crash",
+    Callback = function()
+        local target = game.Players:FindFirstChild(targetName)
+        local localPlayer = game.Players.LocalPlayer
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetCFrame = target.Character.HumanoidRootPart.CFrame
+            print("[MagN Hub]: Enviando estouro de memória para " .. target.Name)
+            
+            -- Procura a ferramenta necessária
+            local tool = localPlayer.Backpack:FindFirstChild("PropMaker") or (localPlayer.Character and localPlayer.Character:FindFirstChild("PropMaker"))
+            if not tool then
+                print("[MagN Hub]: Pegue a ferramenta PropMaker primeiro!")
+                return
+            end
+            
+            local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
+            if remote then
+                -- Executa a inundação visual no mesmo frame de rede
+                for i = 1, 750 do
+                    pcall(function()
+                        -- Utiliza um prop que gera luz ou muitas partículas (ex: fogueira "Campfire" ou holofote "SpotLight")
+                        remote:FireServer("SpotLight", targetCFrame)
+                    end)
+                end
+                print("[MagN Hub]: Carga enviada com sucesso!")
+            end
+        end
+    end
+})
+
+BossScript:AddButton({
+    Name = "⚡ Executar Void Seat Kill",
+    Callback = function()
+        local target = game.Players:FindFirstChild(targetName)
+        local localPlayer = game.Players.LocalPlayer
+        if not target or not target.Character then return end
+        
+        local originalLocation = localPlayer.Character.HumanoidRootPart.CFrame
+        
+        -- Encontra a ferramenta PropMaker
+        local tool = localPlayer.Backpack:FindFirstChild("PropMaker") or (localPlayer.Character and localPlayer.Character:FindFirstChild("PropMaker"))
+        if not tool then 
+            print("[MagN Hub]: Pegue o PropMaker no inventário!")
+            return 
+        end
+        
+        local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
+        if remote then
+            -- Spawna o objeto multi-assentos na coordenada das pernas dele
+            pcall(function()
+                remote:FireServer("Sofa", target.Character.HumanoidRootPart.CFrame)
+            end)
+            
+            task.wait(0.12) -- Aguarda o encaixe do assento
+            
+            local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.SeatPart ~= nil then
+                -- Coordenada letal abaixo do mapa do Brookhaven
+                local voidCFrame = CFrame.new(target.Character.HumanoidRootPart.Position.X, -550, target.Character.HumanoidRootPart.Position.Z)
                 
-                print("[MagN Hub]: Couch Freeze finalizado ou alvo desconectado.")
-            end)
-            
-        else
-            print("[MagN Hub]: Couch Freeze desativado manualmente.")
-            -- Executa a limpeza automática de props para sumir com o sofá do mapa assim que você desliga
-            pcall(function()
-                -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
-            end)
-        end
-    end
-})
-
-local seatSpamActive = false
-
-ModTab:AddToggle({
-    Name = "Ativar Spam de Cadeira (Atrapalhar Alvo)",
-    Default = false,
-    Callback = function(state)
-        seatSpamActive = state
-        
-        if seatSpamActive then
-            local target = game.Players:FindFirstChild(targetName) -- Lê o alvo do seu Dropdown Geral
-            if not target or target == game.Players.LocalPlayer then 
-                print("[MagN Hub]: Nenhum alvo válido selecionado.")
-                seatSpamActive = false
-                return 
-            end
-            
-            print("[MagN Hub]: Iniciando Spam de Cadeira contra " .. target.Name)
-            
-            -- Loop rápido em segundo plano
-            task.spawn(function()
-                while seatSpamActive and target.Parent and target.Character do
-                    local root = target.Character:FindFirstChild("HumanoidRootPart")
-                    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-                    
-                    if root and humanoid then
-                        -- Se ele NÃO estiver sentado, spawna a cadeira nas pernas dele
-                        if humanoid.SeatPart == nil then
-                            pcall(function()
-                                -- Posição ligeiramente abaixo do tronco para forçar o assento instantâneo
-                                local cadeiraPos = root.CFrame * CFrame.new(0, -1, 0)
-                                
-                                -- 🔴 NOTA: Substitua o comando abaixo pelo Remote real de Cadeiras do Brookhaven
-                                -- game:GetService("ReplicatedStorage").CaminhoDoRemote:FireServer("CadeiraID", cadeiraPos)
-                            end)
-                        else
-                            -- Se ele já sentou, força ele a levantar para reiniciar o ciclo e travar a andada
-                            pcall(function()
-                                humanoid.Sit = false 
-                                -- Opcional: Chama o remote de limpar props para sumir com a cadeira antiga
-                                -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
-                            end)
-                        end
+                -- Joga o assento no Void
+                pcall(function()
+                    if humanoid.SeatPart.Parent:IsA("Model") then
+                        humanoid.SeatPart.Parent:MoveTo(voidCFrame.Position)
+                    else
+                        humanoid.SeatPart.CFrame = voidCFrame
                     end
-                    task.wait(0.2) -- Intervalo para travar a movimentação sem pesar o jogo
-                end
-            end)
-        else
-            print("[MagN Hub]: Spam de Cadeira desativado. Limpando props...")
-            pcall(function()
-                -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
-            end)
-        end
-    end
-})
-
--- ====================================================================
--- 🪔 FUNÇÃO: TARGET LAG POR LUMINÁRIA ALTA (TOGGLE)
--- ====================================================================
-local lampLagActive = false
-
-ModTab:AddToggle({
-    Name = "Ativar Lag por Luminária (FloorLamp)",
-    Default = false,
-    Callback = function(state)
-        lampLagActive = state
-        
-        if lampLagActive then
-            local Players = game:GetService("Players")
-            local target = Players:FindFirstChild(targetName) -- Lê o alvo do seu Dropdown Geral
-            
-            -- Validações básicas de segurança antes de iniciar
-            if not target or target == Players.LocalPlayer then 
-                print("[MagN Hub]: Nenhum alvo válido selecionado no Dropdown Geral.")
-                lampLagActive = false
-                return 
-            end
-            
-            print("[MagN Hub]: Iniciando sobrecarga visual contra " .. target.Name)
-            
-            -- Executa o loop em segundo plano para não travar a sua interface gráfica
-            task.spawn(function()
-                while lampLagActive and target.Parent and target.Character do
-                    local root = target.Character:FindFirstChild("HumanoidRootPart")
-                    
-                    if root then
-                        -- Define a coordenada colada ao lado do mal-intencionado
-                        local spawnPos = root.CFrame * CFrame.new(1.5, 0, 0)
-                        
-                        -- Spawna exatamente 15 luminárias amarelas altas uma dentro da outra
-                        for i = 1, 15 do
-                            pcall(function()
-                                -- 🔴 NOTA: Substitua o caminho abaixo pelo RemoteEvent de Props real do Brookhaven
-                                -- Argumentos mapeados: (Nome_Técnico_Do_Prop, CFrame_Posição)
-                                game:GetService("ReplicatedStorage").CaminhoDoRemoteDeProps:FireServer("LightsLightsYellowLamp", spawnPos)
-                            end)
-                        end
+                end)
+                
+                task.wait(0.15) -- Tempo exato para o servidor registrar a morte
+                
+                -- Retorna o objeto para limpar o lixo do mapa
+                pcall(function()
+                    if humanoid.SeatPart.Parent:IsA("Model") then
+                        humanoid.SeatPart.Parent:MoveTo(originalLocation.Position)
+                    else
+                        humanoid.SeatPart.CFrame = originalLocation
                     end
-                    -- Intervalo de atualização para as lâmpadas acompanharem o alvo se ele se mover
-                    task.wait(0.3) 
-                end
-            end)
-        else
-            print("[MagN Hub]: Lag por Luminária desativado. Executando limpeza automática...")
-            -- Quando o Toggle é desligado, aciona o comando de limpar props para remover as lâmpadas do mapa
-            pcall(function()
-                -- 🔴 NOTA: Substitua o caminho abaixo pelo RemoteEvent de limpar/deletar props do Brookhaven
-                game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
-            end)
-            print("[MagN Hub]: Servidor limpo!")
+                end)
+                print("[MagN Hub]: Alvo eliminado no Void!")
+            end
         end
     end
 })
