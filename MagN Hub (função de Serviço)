@@ -614,44 +614,52 @@ BossScript:AddButton({
     end
 })
 
-local seatSpamActive = false
+local couchFreezeActive = false
+local freezeLocation = nil
 
 BossScript:AddToggle({
-    Name = "Ativar Spam de Cadeira (Atrapalhar Alvo)",
+    Name = "Ativar Couch Freeze (Travar Alvo)",
     Default = false,
     Callback = function(state)
-        seatSpamActive = state
+        couchFreezeActive = state
         
-        if seatSpamActive then
+        if couchFreezeActive then
             local target = game.Players:FindFirstChild(targetName)
-            local LocalPlayer = game.Players.LocalPlayer
-            if not target or target == LocalPlayer then seatSpamActive = false return end
+            local localPlayer = game.Players.LocalPlayer
+            if not target or target == localPlayer then couchFreezeActive = false return end
+            
+            -- Salva onde você está parado para ser a prisão
+            freezeLocation = localPlayer.Character.HumanoidRootPart.CFrame
             
             task.spawn(function()
-                while seatSpamActive and target.Parent and target.Character do
-                    local root = target.Character:FindFirstChild("HumanoidRootPart")
+                while couchFreezeActive and target.Parent and target.Character do
                     local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-                    
-                    if root and humanoid then
+                    if humanoid then
+                        -- Se não estiver sentado, força o spawn do sofá usando o PropMaker
                         if humanoid.SeatPart == nil then
                             pcall(function()
-                                local cadeiraPos = root.CFrame * CFrame.new(0, -1, 0)
-                                -- Busca a ferramenta na mochila ou na mão
-                                local tool = LocalPlayer.Backpack:FindFirstChild("PropMaker") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("PropMaker"))
+                                local tool = localPlayer.Backpack:FindFirstChild("PropMaker") or (localPlayer.Character and localPlayer.Character:FindFirstChild("PropMaker"))
                                 if tool then
                                     local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
                                     if remote then
-                                        -- Utiliza uma cadeira padrão do inventário do Brookhaven (ex: "Chair")
-                                        remote:FireServer("Chair", cadeiraPos)
+                                        -- Utiliza a string padrão de sofá do Brookhaven
+                                        remote:FireServer("Sofa", target.Character.HumanoidRootPart.CFrame)
                                     end
                                 end
-                             pcall(function()
-                                humanoid.Sit = false 
-                                -- Como o Brookhaven limpa props pelo botão do martelo, o reset do Sit já basta para o loop
+                            end)
+                        end
+                        -- Se ele já sentou, segura o assento na coordenada fixa calculada localmente
+                        if humanoid.SeatPart ~= nil and humanoid.SeatPart.Name == "Seat" then
+                            pcall(function()
+                                humanoid.SeatPart.CFrame = freezeLocation
+                                humanoid.SeatPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                                if humanoid.SeatPart.Parent:IsA("Model") then
+                                    humanoid.SeatPart.Parent:MoveTo(freezeLocation.Position)
+                                end
                             end)
                         end
                     end
-                    task.wait(0.2) -- Velocidade para travar as pernas
+                    task.wait(0.05) -- Loop ultra rápido para cortar o WASD dele
                 end
             end)
         end
