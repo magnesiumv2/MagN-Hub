@@ -808,6 +808,12 @@ Troll:AddToggle({
         -- Se o Toggle foi ativado (LIGADO)
         if state then
             task.spawn(function()
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                
+                -- SALVA A POSIÇÃO ORIGINAL AQUI (Uma única vez ao ligar o Toggle)
+                local originalCFrame = root and root.CFrame 
+
                 -- O loop principal roda enquanto o Toggle estiver ligado
                 while flingActive do
                     if selectedPlayerName then
@@ -819,13 +825,12 @@ Troll:AddToggle({
                             
                             -- Só ataca se o alvo não estiver sentado (já derrubado)
                             if not tHum.Sit then
-                                local char = LocalPlayer.Character
-                                local root = char and char:FindFirstChild("HumanoidRootPart")
+                                char = LocalPlayer.Character
+                                root = char and char:FindFirstChild("HumanoidRootPart")
                                 local tRoot = target.Character:FindFirstChild("Head")
                                 
                                 if root and tRoot then
                                     local hum = char:FindFirstChildOfClass("Humanoid")
-                                    local original = root.CFrame
 
                                     -- 1. Limpa as ferramentas antigas
                                     local argsClean = {"ClearAllTools"}
@@ -892,7 +897,7 @@ Troll:AddToggle({
                                         task.wait()
                                     end
                                     
-                                    -- --- LIMPEZA APÓS O ATAQUE DA VEZ ENTRAR EM BREAK ---
+                                    -- --- LIMPEZA APÓS O ATAQUE DA VEZ ---
                                     if bv then bv:Destroy() end
                                     
                                     if hum then
@@ -901,8 +906,9 @@ Troll:AddToggle({
                                         hum:UnequipTools()
                                     end
                                     
-                                    if root then
-                                        root.CFrame = original
+                                    -- Retorna para a posição salva no início de TUDO
+                                    if root and originalCFrame then
+                                        root.CFrame = originalCFrame
                                         for _, p in pairs(char:GetDescendants()) do
                                             if p:IsA("BasePart") then
                                                 p.Velocity = Vector3.zero
@@ -919,10 +925,22 @@ Troll:AddToggle({
                     end
                     task.wait(0.5) -- Tempo de espera entre checagens para ver se o alvo spawnou novamente
                 end
+                
+                -- Retorno de segurança final caso o loop principal termine (botão desligado)
+                if root and originalCFrame then
+                    root.CFrame = originalCFrame
+                end
             end)
         else
             -- Se desligar manualmente o Toggle, para o loop imediatamente
             flingActive = false
+            
+            -- Retorno de emergência imediato ao desligar o botão
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
+            if hum then cam.CameraSubject = hum end
         end
     end
 })
