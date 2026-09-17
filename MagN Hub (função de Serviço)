@@ -817,6 +817,64 @@ ModTab:AddToggle({
     end
 })
 
+-- ====================================================================
+-- 🪔 FUNÇÃO: TARGET LAG POR LUMINÁRIA ALTA (TOGGLE)
+-- ====================================================================
+local lampLagActive = false
+
+ModTab:AddToggle({
+    Name = "Ativar Lag por Luminária (FloorLamp)",
+    Default = false,
+    Callback = function(state)
+        lampLagActive = state
+        
+        if lampLagActive then
+            local Players = game:GetService("Players")
+            local target = Players:FindFirstChild(targetName) -- Lê o alvo do seu Dropdown Geral
+            
+            -- Validações básicas de segurança antes de iniciar
+            if not target or target == Players.LocalPlayer then 
+                print("[MagN Hub]: Nenhum alvo válido selecionado no Dropdown Geral.")
+                lampLagActive = false
+                return 
+            end
+            
+            print("[MagN Hub]: Iniciando sobrecarga visual contra " .. target.Name)
+            
+            -- Executa o loop em segundo plano para não travar a sua interface gráfica
+            task.spawn(function()
+                while lampLagActive and target.Parent and target.Character do
+                    local root = target.Character:FindFirstChild("HumanoidRootPart")
+                    
+                    if root then
+                        -- Define a coordenada colada ao lado do mal-intencionado
+                        local spawnPos = root.CFrame * CFrame.new(1.5, 0, 0)
+                        
+                        -- Spawna exatamente 15 luminárias amarelas altas uma dentro da outra
+                        for i = 1, 15 do
+                            pcall(function()
+                                -- 🔴 NOTA: Substitua o caminho abaixo pelo RemoteEvent de Props real do Brookhaven
+                                -- Argumentos mapeados: (Nome_Técnico_Do_Prop, CFrame_Posição)
+                                game:GetService("ReplicatedStorage").CaminhoDoRemoteDeProps:FireServer("LightsLightsYellowLamp", spawnPos)
+                            end)
+                        end
+                    end
+                    -- Intervalo de atualização para as lâmpadas acompanharem o alvo se ele se mover
+                    task.wait(0.3) 
+                end
+            end)
+        else
+            print("[MagN Hub]: Lag por Luminária desativado. Executando limpeza automática...")
+            -- Quando o Toggle é desligado, aciona o comando de limpar props para remover as lâmpadas do mapa
+            pcall(function()
+                -- 🔴 NOTA: Substitua o caminho abaixo pelo RemoteEvent de limpar/deletar props do Brookhaven
+                game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
+            end)
+            print("[MagN Hub]: Servidor limpo!")
+        end
+    end
+})
+
 local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://11415789819" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
