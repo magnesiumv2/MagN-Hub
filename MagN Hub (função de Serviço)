@@ -658,58 +658,6 @@ BossScript:AddToggle({
     end
 })
 
-local couchFreezeActive = false
-local freezeLocation = nil
-
-BossScript:AddToggle({
-    Name = "Ativar Couch Freeze (Travar Alvo)",
-    Default = false,
-    Callback = function(state)
-        couchFreezeActive = state
-        
-        if couchFreezeActive then
-            local target = game.Players:FindFirstChild(targetName)
-            local localPlayer = game.Players.LocalPlayer
-            if not target or target == localPlayer then couchFreezeActive = false return end
-            
-            -- Salva onde você está parado para ser a prisão
-            freezeLocation = localPlayer.Character.HumanoidRootPart.CFrame
-            
-            task.spawn(function()
-                while couchFreezeActive and target.Parent and target.Character do
-                    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        -- Se não estiver sentado, força o spawn do sofá usando o PropMaker
-                        if humanoid.SeatPart == nil then
-                            pcall(function()
-                                local tool = localPlayer.Backpack:FindFirstChild("PropMaker") or (localPlayer.Character and localPlayer.Character:FindFirstChild("PropMaker"))
-                                if tool then
-                                    local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
-                                    if remote then
-                                        -- Utiliza a string padrão de sofá do Brookhaven
-                                        remote:FireServer("Sofa", target.Character.HumanoidRootPart.CFrame)
-                                    end
-                                end
-                            end)
-                        end
-                        -- Se ele já sentou, segura o assento na coordenada fixa calculada localmente
-                        if humanoid.SeatPart ~= nil and humanoid.SeatPart.Name == "Seat" then
-                            pcall(function()
-                                humanoid.SeatPart.CFrame = freezeLocation
-                                humanoid.SeatPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                                if humanoid.SeatPart.Parent:IsA("Model") then
-                                    humanoid.SeatPart.Parent:MoveTo(freezeLocation.Position)
-                                end
-                            end)
-                        end
-                    end
-                    task.wait(0.05) -- Loop ultra rápido para cortar o WASD dele
-                end
-            end)
-        end
-    end
-})
-
 BossScript:AddButton({
     Name = "💥 Executar Instant Client Crash",
     Callback = function()
