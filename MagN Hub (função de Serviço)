@@ -1,3 +1,32 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Lista com as IDs de usuário (UserIds) permitidas para rodar o Hub
+local IDsAutorizadas = {
+    123456789, -- 🌟 SUBSTUIA PELO SEU USERID DO ROBLOX
+    987654321, -- ID de um amigo autorizado (opcional)
+}
+
+local acessoPermitido = false
+for _, id in ipairs(IDsAutorizadas) do
+    if LocalPlayer.UserId == id then
+        acessoPermitido = true
+        break
+    end
+end
+
+if not acessoPermitido then
+    local StarterGui = game:GetService("StarterGui")
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "MagN Hub - Erro",
+            Text = "Acesso Negado. Seu ID não está na Whitelist!",
+            Duration = 10
+        })
+    end)
+    return -- Cancela a execução do script imediatamente
+end
+
 local Libary = loadstring(game:HttpGet("https://pastefy.app/TYVuPNOS/raw"))()
 workspace.FallenPartsDestroyHeight = -math.huge
 
@@ -726,6 +755,61 @@ BossScript:AddToggle({
         else
             print("[MagN Hub]: Couch Freeze desativado manualmente.")
             -- Executa a limpeza automática de props para sumir com o sofá do mapa assim que você desliga
+            pcall(function()
+                -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
+            end)
+        end
+    end
+})
+
+local seatSpamActive = false
+
+ModTab:AddToggle({
+    Name = "Ativar Spam de Cadeira (Atrapalhar Alvo)",
+    Default = false,
+    Callback = function(state)
+        seatSpamActive = state
+        
+        if seatSpamActive then
+            local target = game.Players:FindFirstChild(targetName) -- Lê o alvo do seu Dropdown Geral
+            if not target or target == game.Players.LocalPlayer then 
+                print("[MagN Hub]: Nenhum alvo válido selecionado.")
+                seatSpamActive = false
+                return 
+            end
+            
+            print("[MagN Hub]: Iniciando Spam de Cadeira contra " .. target.Name)
+            
+            -- Loop rápido em segundo plano
+            task.spawn(function()
+                while seatSpamActive and target.Parent and target.Character do
+                    local root = target.Character:FindFirstChild("HumanoidRootPart")
+                    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+                    
+                    if root and humanoid then
+                        -- Se ele NÃO estiver sentado, spawna a cadeira nas pernas dele
+                        if humanoid.SeatPart == nil then
+                            pcall(function()
+                                -- Posição ligeiramente abaixo do tronco para forçar o assento instantâneo
+                                local cadeiraPos = root.CFrame * CFrame.new(0, -1, 0)
+                                
+                                -- 🔴 NOTA: Substitua o comando abaixo pelo Remote real de Cadeiras do Brookhaven
+                                -- game:GetService("ReplicatedStorage").CaminhoDoRemote:FireServer("CadeiraID", cadeiraPos)
+                            end)
+                        else
+                            -- Se ele já sentou, força ele a levantar para reiniciar o ciclo e travar a andada
+                            pcall(function()
+                                humanoid.Sit = false 
+                                -- Opcional: Chama o remote de limpar props para sumir com a cadeira antiga
+                                -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
+                            end)
+                        end
+                    end
+                    task.wait(0.2) -- Intervalo para travar a movimentação sem pesar o jogo
+                end
+            end)
+        else
+            print("[MagN Hub]: Spam de Cadeira desativado. Limpando props...")
             pcall(function()
                 -- game:GetService("ReplicatedStorage").CaminhoDoRemoteDeLimpar:FireServer()
             end)
