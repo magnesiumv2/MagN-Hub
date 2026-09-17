@@ -815,13 +815,12 @@ Troll:AddToggle({
             local hum = char:FindFirstChildOfClass("Humanoid")
             local original = root.CFrame
 
-local args = {
-	"ClearAllTools"
-}
-game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(args))
+            local args = {
+                "ClearAllTools"
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(args))
 
-task.wait(0.0001)
-
+            task.wait(0.0001)
 
             local args = {
                 [1] = "PickingTools",
@@ -830,11 +829,36 @@ task.wait(0.0001)
             game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
 
             task.wait(0.0001)
+            
+            -- ==========================================
+            -- SEÇÃO ALTERADA: ANEXANDO AO HUMANOIDROOTPART
+            -- ==========================================
             local tool = LocalPlayer.Backpack:FindFirstChild("Couch")
+            local weld -- Criamos uma variável de referência para deletar depois
+            
             if tool then
-                tool.Parent = char
+                -- Procuramos pela parte visual do sofá dentro da Tool (geralmente chamada de Handle ou Couch)
+                local couchPart = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
+                
+                if couchPart then
+                    -- Tiramos o sofá de dentro da estrutura de "Tool" para ele não ir para a mão
+                    couchPart.Parent = char
+                    couchPart.CFrame = root.CFrame -- Move o sofá exatamente para a posição do seu corpo
+                    couchPart.CanCollide = false   -- Desativa colisão para o sofá não travar o seu movimento
+                    
+                    -- Cria uma solda física unindo o sofá ao seu HumanoidRootPart
+                    weld = Instance.new("WeldConstraint")
+                    weld.Name = "CouchFlingWeld"
+                    weld.Part0 = root
+                    weld.Part1 = couchPart
+                    weld.Parent = root
+                end
+                -- Deleta a estrutura Tool vazia que sobrou na mochila
+                tool:Destroy() 
             end
-				task.wait(0.0001)
+            -- ==========================================
+
+            task.wait(0.0001)
 
             workspace.FallenPartsDestroyHeight = 0/0
             local bv = Instance.new("BodyVelocity")
@@ -846,9 +870,9 @@ task.wait(0.0001)
             hum.PlatformStand = false
             cam.CameraSubject = target.Character:FindFirstChild("Head") or tRoot or hum
 
-wait(0.001)
+            wait(0.001)
 
-game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F, false, game)
+            game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F, false, game)
 
             task.spawn(function()
                 local angle = 0
@@ -872,8 +896,16 @@ game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F, false,
                     root.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
                     task.wait()
                 end
+                
+                -- Limpeza ao desligar o Fling
                 flingActive = false
                 bv:Destroy()
+                
+                -- Remove a solda e a parte do sofá anexada ao corpo
+                if weld then weld:Destroy() end
+                local oldCouch = char:FindFirstChild("Handle") or char:FindFirstChild("Couch")
+                if oldCouch then oldCouch:Destroy() end
+                
                 hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
                 hum.PlatformStand = false
                 root.CFrame = original
