@@ -970,20 +970,20 @@ Troll:AddToggle({
                                     -- 1. Limpa e pega o Sofá
                                     local argsClean = {"ClearAllTools"}
                                     game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
-                                    task.wait(0.05)
+                                    task.wait(0.0001)
 
                                     local argsGet = {
-                                        [1] = "PickingTools",
-                                        [2] = "Couch"
+                                        = "PickingTools",
+                                        = "Couch"
                                     }
                                     game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
-                                    task.wait(0.05)
+                                    task.wait(0.0001)
 
                                     local tool = LocalPlayer.Backpack:FindFirstChild("Couch")
                                     if tool then
                                         tool.Parent = char
                                     end
-                                    task.wait(0.05)
+                                    task.wait(0.0001)
 
                                     -- 2. Solta o sofá da mão do LocalPlayer
                                     local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
@@ -993,29 +993,52 @@ Troll:AddToggle({
                                     end
 
                                     local handle = tool:FindFirstChild("Handle")
+                                    local bv = nil
+                                    
                                     if handle then
                                         handle.CanCollide = false
                                         
-                                        -- 3. Loop: Mantém o sofá nas pernas do alvo até ele sentar
-                                        while voidTrapActive and tHum and tHum.Health > 0 and not tHum.Sit do
-                                            -- Tenta posicionar levemente abaixo do RootPart (onde ficam as pernas)
-                                            handle.CFrame = tRoot.CFrame * CFrame.new(0, -2, 0)
+                                        -- Adiciona uma força física para o sofá não sofrer arrasto da gravidade comum
+                                        bv = Instance.new("BodyVelocity")
+                                        bv.Name = "TrapForce"
+                                        bv.Velocity = Vector3.new(0, 0, 0)
+                                        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                                        bv.Parent = handle
+
+                                        local angle = 0
+                                        -- 3. Loop de Ataque Giratório: Gruda e roda nas pernas do alvo até ele sentar
+                                        while voidTrapActive and tHum and tHum.Health > 0 and not tHum.Sit and handle:IsDescendantOf(workspace) do
+                                            angle = (angle + 50) % 360
+                                            
+                                            -- Calcula a posição prevendo levemente a movimentação dele (Velocity / 1.5)
+                                            local pos_x = tRoot.Position.X + (tRoot.Velocity.X / 1.5)
+                                            local pos_y = tRoot.Position.Y - 2 -- Altura das pernas
+                                            local pos_z = tRoot.Position.Z + (tRoot.Velocity.Z / 1.5)
+                                            
+                                            -- Atualiza a CFrame com o giro frenético igual ao Fling
+                                            handle.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+
+                                            -- Forças de rotação agressiva para bugar o assento no corpo dele
+                                            handle.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                                            handle.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
                                             task.wait()
                                         end
 
-                                        -- 4. O alvo sentou! Teleporta o sofá para milímetros acima do limite de destruição do Void
+                                        -- 4. O alvo engatou no assento! Teleporta para milímetros perto do Void
                                         if tHum.Sit then
-                                            -- Define uma altura segura logo acima de onde as partes são deletadas automaticamente
+                                            if bv then bv:Destroy() end -- Remove a força de rotação absurda para estabilizar a queda
+                                            
+                                            -- Pega o limite de destruição do mapa atual e joga logo acima dele
                                             local voidY = workspace.FallenPartsDestroyHeight + 15
                                             handle.CFrame = CFrame.new(tRoot.Position.X, voidY, tRoot.Position.Z)
                                             
-                                            -- Espera um instante para o jogo processar a queda do alvo junto com o sofá
-                                            task.wait(0.1)
+                                            -- Tempo exato de resposta para o motor do jogo arrastar a ID de rede dele junto
+                                            task.wait(0.15)
                                             
-                                            -- 5. Deleta o sofá (tirando da mochila/personagem) deixando o alvo cair livremente no void
+                                            -- 5. Deleta o Sofá, desvinculando o assento e derrubando o alvo no limbo
                                             tool:Destroy()
                                             
-                                            -- Limpa o servidor por segurança externa
+                                            -- Limpeza remota de segurança contra ferramentas travadas
                                             game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
                                         end
                                     end
@@ -1024,7 +1047,7 @@ Troll:AddToggle({
                             end
                         end
                     end
-                    task.wait(0.3) -- Pausa rápida antes de checar o alvo novamente
+                    task.wait(0.3)
                 end
             end)
         else
