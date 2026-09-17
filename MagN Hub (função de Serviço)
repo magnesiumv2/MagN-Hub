@@ -697,61 +697,6 @@ BossScript:AddButton({
     end
 })
 
-BossScript:AddButton({
-    Name = "⚡ Executar Void Seat Kill",
-    Callback = function()
-        local target = game.Players:FindFirstChild(targetName)
-        local localPlayer = game.Players.LocalPlayer
-        if not target or not target.Character then return end
-        
-        local originalLocation = localPlayer.Character.HumanoidRootPart.CFrame
-        
-        -- Encontra a ferramenta PropMaker
-        local tool = localPlayer.Backpack:FindFirstChild("PropMaker") or (localPlayer.Character and localPlayer.Character:FindFirstChild("PropMaker"))
-        if not tool then 
-            print("[MagN Hub]: Pegue o PropMaker no inventário!")
-            return 
-        end
-        
-        local remote = tool:FindFirstChild("Tool_PropMake") or tool:FindFirstChild("LocalTool")
-        if remote then
-            -- Spawna o objeto multi-assentos na coordenada das pernas dele
-            pcall(function()
-                remote:FireServer("Sofa", target.Character.HumanoidRootPart.CFrame)
-            end)
-            
-            task.wait(0.12) -- Aguarda o encaixe do assento
-            
-            local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.SeatPart ~= nil then
-                -- Coordenada letal abaixo do mapa do Brookhaven
-                local voidCFrame = CFrame.new(target.Character.HumanoidRootPart.Position.X, -550, target.Character.HumanoidRootPart.Position.Z)
-                
-                -- Joga o assento no Void
-                pcall(function()
-                    if humanoid.SeatPart.Parent:IsA("Model") then
-                        humanoid.SeatPart.Parent:MoveTo(voidCFrame.Position)
-                    else
-                        humanoid.SeatPart.CFrame = voidCFrame
-                    end
-                end)
-                
-                task.wait(0.15) -- Tempo exato para o servidor registrar a morte
-                
-                -- Retorna o objeto para limpar o lixo do mapa
-                pcall(function()
-                    if humanoid.SeatPart.Parent:IsA("Model") then
-                        humanoid.SeatPart.Parent:MoveTo(originalLocation.Position)
-                    else
-                        humanoid.SeatPart.CFrame = originalLocation
-                    end
-                end)
-                print("[MagN Hub]: Alvo eliminado no Void!")
-            end
-        end
-    end
-})
-
 local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://11415789819" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -1153,6 +1098,6 @@ Anti:AddToggle({
     end
 })
 
-game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://114476297734336"
+game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://113213458632705"
 wait(0.5)
 game:GetService("Players").LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Seated, true)
