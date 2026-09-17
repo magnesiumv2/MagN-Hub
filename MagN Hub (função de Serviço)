@@ -808,6 +808,12 @@ Troll:AddToggle({
         -- Se o Toggle foi ativado (LIGADO)
         if state then
             task.spawn(function()
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                
+                -- SALVA A POSIÇÃO ORIGINAL AQUI (Uma única vez ao ligar o Toggle)
+                local originalCFrame = root and root.CFrame 
+
                 -- O loop principal roda enquanto o Toggle estiver ligado
                 while flingActive do
                     if selectedPlayerName then
@@ -819,13 +825,13 @@ Troll:AddToggle({
                             
                             -- Só ataca se o alvo não estiver sentado (já derrubado)
                             if not tHum.Sit then
-                                local char = LocalPlayer.Character
-                                local root = char and char:FindFirstChild("HumanoidRootPart")
+                                char = LocalPlayer.Character
+                                root = char and char:FindFirstChild("HumanoidRootPart")
                                 local tRoot = target.Character:FindFirstChild("Head")
                                 
                                 if root and tRoot then
                                     local hum = char:FindFirstChildOfClass("Humanoid")
-                                    
+
                                     -- 1. Limpa as ferramentas antigas
                                     local argsClean = {"ClearAllTools"}
                                     game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
@@ -847,34 +853,18 @@ Troll:AddToggle({
 
                                     workspace.FallenPartsDestroyHeight = -999999
 
-                                    -- 3. CRIAÇÃO DO CLONE FANTASMA (Para não travar o seu personagem real)
-                                    local ghostRoot = Instance.new("Part")
-                                    ghostRoot.Name = "FlingGhost"
-                                    ghostRoot.Size = root.Size
-                                    ghostRoot.Transparency = 1 -- Invisível
-                                    ghostRoot.CanCollide = false
-                                    ghostRoot.Anchored = false
-                                    ghostRoot.CFrame = root.CFrame
-                                    ghostRoot.Parent = workspace
-                                    
-                                    -- Solda o Sofá no Clone Fantasma para dar o dano/fling
-                                    local handle = tool:FindFirstChild("Handle")
-                                    if handle then
-                                        local weld = Instance.new("Weld")
-                                        weld.Part0 = ghostRoot
-                                        weld.Part1 = handle
-                                        weld.C0 = CFrame.new(0, 0, 0)
-                                        weld.Parent = ghostRoot
+                                    if root:FindFirstChild("FlingForce") then
+                                        root.FlingForce:Destroy()
                                     end
 
-                                    -- Aplica as forças absurdas APENAS no clone fantasma
                                     local bv = Instance.new("BodyVelocity")
                                     bv.Name = "FlingForce"
                                     bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
                                     bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                                    bv.Parent = ghostRoot
+                                    bv.Parent = root
                                     
-                                    -- Mantém a câmera no alvo para você ver o ataque acontecer
+                                    hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                                    hum.PlatformStand = false
                                     cam.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
 
                                     task.wait(0.001)
@@ -886,8 +876,8 @@ Troll:AddToggle({
                                     vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
 
                                     local angle = 0
-                                    -- Loop interno do ataque contra o alvo atual (Move apenas o clone)
-                                    while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and ghostRoot:IsDescendantOf(workspace) do
+                                    -- Loop interno do ataque contra o alvo atual
+                                    while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") do
                                         local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
                                         if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
                                         
@@ -900,22 +890,33 @@ Troll:AddToggle({
                                         pos_y = pos_y + (target.Character.Head.Velocity.Y / 1.5)
                                         pos_z = pos_z + (target.Character.Head.Velocity.Z / 1.5)
                                         
-                                        -- O Clone é quem teleporta e gira na cabeça do inimigo
-                                        ghostRoot.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+                                        root.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
 
-                                        ghostRoot.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                                        ghostRoot.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+                                        root.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                                        root.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
                                         task.wait()
                                     end
                                     
-                                    -- --- LIMPEZA APÓS O ATAQUE DA VEZ ENTRAR EM BREAK ---
-                                    if ghostRoot then ghostRoot:Destroy() end -- Deleta o clone e as forças
+                                    -- --- LIMPEZA APÓS O ATAQUE DA VEZ ---
+                                    if bv then bv:Destroy() end
                                     
                                     if hum then
+                                        hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                                        hum.PlatformStand = false
                                         hum:UnequipTools()
                                     end
                                     
-                                    -- Devolve a câmera para o seu personagem real
+                                    -- Retorna para a posição salva no início de TUDO
+                                    if root and originalCFrame then
+                                        root.CFrame = originalCFrame
+                                        for _, p in pairs(char:GetDescendants()) do
+                                            if p:IsA("BasePart") then
+                                                p.Velocity = Vector3.zero
+                                                p.RotVelocity = Vector3.zero
+                                            end
+                                        end
+                                    end
+                                    
                                     cam.CameraSubject = hum
                                     game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
                                 end
@@ -924,10 +925,22 @@ Troll:AddToggle({
                     end
                     task.wait(0.5) -- Tempo de espera entre checagens para ver se o alvo spawnou novamente
                 end
+                
+                -- Retorno de segurança final caso o loop principal termine (botão desligado)
+                if root and originalCFrame then
+                    root.CFrame = originalCFrame
+                end
             end)
         else
             -- Se desligar manualmente o Toggle, para o loop imediatamente
             flingActive = false
+            
+            -- Retorno de emergência imediato ao desligar o botão
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
+            if hum then cam.CameraSubject = hum end
         end
     end
 })
