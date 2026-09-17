@@ -550,6 +550,180 @@ BossScript:AddButton({
     end
 })
 
+-- Redz Library - Configuração Inicial de Variáveis do MagN Hub
+local Players = game:GetService("Players")
+local targetName = "" -- Armazena o alvo selecionado no Dropdown
+local attackEnabled = false -- Controla o estado do Toggle
+
+-- Função para atualizar a lista de jogadores no Dropdown dinamicamente
+local function getPlayerNames()
+    local names = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer then -- Não lista você mesmo
+            table.insert(names, player.Name)
+        end
+    end
+    return names
+end
+
+-- ====================================================================
+-- ELEMENTOS DA INTERFACE (Adicione dentro da sua Tab/Seção da Redz Lib)
+-- ====================================================================
+
+-- 1. Dropdown para Selecionar o Alvo
+local TargetDropdown = BossScript:AddDropdown({
+    Name = "Selecionar o Alvo",
+    Options = getPlayerNames(), -- Puxa a lista de jogadores atuais
+    Default = "Nenhum",
+    Callback = function(selectedOption)
+        targetName = selectedOption
+        print("[MagN Hub]: Alvo alterado para: " .. targetName)
+    end
+})
+
+-- Botão opcional para atualizar a lista de jogadores caso alguém entre ou saia
+BossScript:AddButton({
+    Name = "🔄 Atualizar Lista de Jogadores",
+    Callback = function()
+        TargetDropdown:Refresh(getPlayerNames(), true)
+    end
+})
+
+-- 2. Toggle para Ativar e Desativar o Contra-Ataque
+BossScript:AddToggle({
+    Name = "Ativar Contra-Ataque (Abajur)",
+    Default = false,
+    Callback = function(state)
+        attackEnabled = state
+        
+        if attackEnabled then
+            -- Verifica se um alvo válido foi selecionado antes de iniciar
+            local target = Players:FindFirstChild(targetName)
+            if not target then
+                print("[MagN Hub]: Selecione um alvo válido primeiro!")
+                return
+            end
+            
+            print("[MagN Hub]: Contra-Ataque Iniciado!")
+            
+            -- Executa o Loop em uma thread separada para não travar o menu
+            task.spawn(function()
+                while attackEnabled and target.Parent do
+                    if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                        -- Pega a posição do alvo com um pequeno deslocamento lateral
+                        local alvoPos = target.Character.HumanoidRootPart.CFrame * CFrame.new(2, 0, 0)
+                        
+                        -- Spawna os 15 abajures um dentro do outro
+                        for i = 1, 15 do
+                            -- SUBSTUIA pelo RemoteEvent real do Brookhaven encontrado no Remote Spy
+                            -- game:GetService("ReplicatedStorage").Caminho.Do.Remote:FireServer("AbajurID", alvoPos)
+                        end
+                    end
+                    task.wait(0.5) -- Intervalo de segurança para acompanhar o movimento do alvo
+                end
+                
+                -- Se o loop quebrou porque o alvo saiu do servidor
+                if targetName ~= "" and not Players:FindFirstChild(targetName) then
+                    print("[MagN Hub]: O mal-intencionado saiu! Executando limpeza automática...")
+                    
+                    -- SUBSTUIA pelo RemoteEvent real de limpar props do Brookhaven
+                    -- game:GetService("ReplicatedStorage").Caminho.Do.RemoteDeLimpar:FireServer()
+                    
+                    print("[MagN Hub]: Limpeza concluída.")
+                    attackEnabled = false
+                    -- Nota técnica: Se a Redz Lib suportar, você pode forçar o Toggle visual a voltar para falso aqui
+                end
+            end)
+        else
+            print("[MagN Hub]: Contra-Ataque Desativado Manualmente.")
+            -- Executa a limpeza manual se você desligar o Toggle por conta própria
+            -- game:GetService("ReplicatedStorage").Caminho.Do.RemoteDeLimpar:FireServer()
+        end
+    end
+})
+
+-- Redz Library - Variáveis para o Couch Freeze do MagN Hub
+local Players = game:GetService("Players")
+local targetName = ""          -- Armazena o alvo selecionado
+local couchFreezeActive = false -- Controla o estado do Toggle
+local freezeLocation = nil      -- Guarda a posição onde o botão foi apertado
+
+-- Dropdown para selecionar o Alvo (Substitua ou integre ao Dropdown anterior se preferir)
+local TargetDropdownCouch = BossScript:AddDropdown({
+    Name = "Selecionar Alvo (Couch Freeze)",
+    Options = {}, -- Preenchido dinamicamente ou usando a função 'getPlayerNames()' criada antes
+    Default = "Nenhum",
+    Callback = function(selectedOption)
+        targetName = selectedOption
+        print("[MagN Hub]: Alvo do Couch definido para: " .. targetName)
+    end
+})
+
+-- Toggle para Ativar e Desativar o Freeze com Couch
+BossScript:AddToggle({
+    Name = "Ativar Couch Freeze (Travar Alvo)",
+    Default = false,
+    Callback = function(state)
+        couchFreezeActive = state
+        
+        if couchFreezeActive then
+            local target = Players:FindFirstChild(targetName)
+            local localPlayer = Players.LocalPlayer
+            
+            -- Validações de segurança antes de rodar
+            if not target or target == localPlayer then
+                print("[MagN Hub]: Selecione um alvo válido primeiro!")
+                couchFreezeActive = false
+                return
+            end
+            
+            if not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                print("[MagN Hub]: Seu personagem não foi carregado corretamente.")
+                couchFreezeActive = false
+                return
+            end
+            
+            -- Salva EXATAMENTE a localização onde você estava quando ativou o botão
+            freezeLocation = localPlayer.Character.HumanoidRootPart.CFrame
+            print("[MagN Hub]: Posição de aprisionamento salva! Iniciando loop...")
+            
+            -- Loop de aprisionamento executado em segundo plano (task.spawn)
+            task.spawn(function()
+                while couchFreezeActive and target.Parent and target.Character do
+                    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+                    
+                    -- Se o alvo não estiver sentado, o script spawna o sofá embaixo dele para forçar o assento
+                    -- NOTA: Substitua pelo Remote real de Props/Sofá do Brookhaven gerado pelo seu Remote Spy
+                    if humanoid and humanoid.SeatPart == nil then
+                        -- Exemplo: game:GetService("ReplicatedStorage").RemoteDoBrookhaven:FireServer("CouchID", target.Character.HumanoidRootPart.CFrame)
+                    end
+                    
+                    -- Se ele já estiver sentado no sofá, o script move o sofá para a coordenada fixa que você salvou
+                    -- Isso impede que ele use WASD ou use exploits de voar/teleportar para escapar
+                    if humanoid and humanoid.SeatPart ~= nil and humanoid.SeatPart.Name == "Seat" then
+                        -- Acessa o modelo do sofá gerado localmente pelo exploit e força a posição dele
+                        local couchModel = humanoid.SeatPart.Parent
+                        if couchModel and couchModel:IsA("Model") then
+                            couchModel:MoveTo(freezeLocation.Position)
+                        elseif humanoid.SeatPart:IsA("BasePart") then
+                            humanoid.SeatPart.CFrame = freezeLocation
+                        end
+                    end
+                    
+                    task.wait(0.1) -- Loop rápido para vencer qualquer tentativa de fuga do trapaceiro
+                end
+                
+                print("[MagN Hub]: Couch Freeze finalizado ou alvo desconectado.")
+            end)
+            
+        else
+            print("[MagN Hub]: Couch Freeze desativado manualmente.")
+            -- Opcional: Executa o comando de limpar props para sumir com o sofá do mapa
+            -- game:GetService("ReplicatedStorage").Caminho.Do.RemoteDeLimpar:FireServer()
+        end
+    end
+})
+
 local Troll = Window:MakeTab({ Title = "Kill Player", Icon = "rbxassetid://11415789819" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
