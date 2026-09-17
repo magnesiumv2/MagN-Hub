@@ -3,7 +3,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Lista com as IDs de usuário (UserIds) permitidas para rodar o Hub
 local IDsAutorizadas = {
-    123456789, -- 🌟 SUBSTUIA PELO SEU USERID DO ROBLOX
+    9008578450, -- 🌟 SUBSTUIA PELO SEU USERID DO ROBLOX
     987654321, -- ID de um amigo autorizado (opcional)
 }
 
