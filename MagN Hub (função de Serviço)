@@ -1381,8 +1381,6 @@ end
 
 -- ==================== ELEMENTOS DA SUA INTERFACE (GUI) ====================
 
-Troll:AddSection({"Metodos"})
-
 -- 1. Dropdown para escolher qual método usar
 Troll:AddDropdown({
     Name = "Método",
