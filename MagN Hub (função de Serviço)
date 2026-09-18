@@ -808,12 +808,6 @@ Troll:AddToggle({
         -- Se o Toggle foi ativado (LIGADO)
         if state then
             task.spawn(function()
-                local char = LocalPlayer.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                
-                -- SALVA A POSIÇÃO ORIGINAL AQUI (Uma única vez ao ligar o Toggle)
-                local originalCFrame = root and root.CFrame 
-
                 -- O loop principal roda enquanto o Toggle estiver ligado
                 while flingActive do
                     if selectedPlayerName then
@@ -825,12 +819,13 @@ Troll:AddToggle({
                             
                             -- Só ataca se o alvo não estiver sentado (já derrubado)
                             if not tHum.Sit then
-                                char = LocalPlayer.Character
-                                root = char and char:FindFirstChild("HumanoidRootPart")
+                                local char = LocalPlayer.Character
+                                local root = char and char:FindFirstChild("HumanoidRootPart")
                                 local tRoot = target.Character:FindFirstChild("Head")
                                 
                                 if root and tRoot then
                                     local hum = char:FindFirstChildOfClass("Humanoid")
+                                    local original = root.CFrame
 
                                     -- 1. Limpa as ferramentas antigas
                                     local argsClean = {"ClearAllTools"}
@@ -897,7 +892,7 @@ Troll:AddToggle({
                                         task.wait()
                                     end
                                     
-                                    -- --- LIMPEZA APÓS O ATAQUE DA VEZ ---
+                                    -- --- LIMPEZA APÓS O ATAQUE DA VEZ ENTRAR EM BREAK ---
                                     if bv then bv:Destroy() end
                                     
                                     if hum then
@@ -906,9 +901,8 @@ Troll:AddToggle({
                                         hum:UnequipTools()
                                     end
                                     
-                                    -- Retorna para a posição salva no início de TUDO
-                                    if root and originalCFrame then
-                                        root.CFrame = originalCFrame
+                                    if root then
+                                        root.CFrame = original
                                         for _, p in pairs(char:GetDescendants()) do
                                             if p:IsA("BasePart") then
                                                 p.Velocity = Vector3.zero
@@ -925,24 +919,59 @@ Troll:AddToggle({
                     end
                     task.wait(0.5) -- Tempo de espera entre checagens para ver se o alvo spawnou novamente
                 end
-                
-                -- Retorno de segurança final caso o loop principal termine (botão desligado)
-                if root and originalCFrame then
-                    root.CFrame = originalCFrame
-                end
             end)
         else
             -- Se desligar manualmente o Toggle, para o loop imediatamente
             flingActive = false
-            
-            -- Retorno de emergência imediato ao desligar o botão
-            local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
-            if hum then cam.CameraSubject = hum end
         end
     end
+})
+
+Troll:AddSection({"Internet Error/Lag Server"})
+
+Troll:AddButton({ 
+    Name = "Overflow Server/Lag Internet Error Kick",
+    Callback = function() 
+        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
+        local backpack = LocalPlayer:WaitForChild("Backpack") 
+        local remoteStorage = ReplicatedStorage:WaitForChild("RE") 
+        local toolRemote = remoteStorage:FindFirstChild("1Too1l") 
+        
+        if toolRemote and toolRemote:IsA("RemoteFunction") then 
+            local args1 = { "PickingTools" , "FireHose" } 
+            local args2 = { "FireHose" , "DestroyFireHose" } 
+            
+            for i = 1, 30 do 
+                task.spawn(function() 
+                    -- Aumentado para 289 requisições por ciclo
+                    for m = 1, 289 do 
+                        pcall(function() 
+                            toolRemote:InvokeServer(unpack(args1)) 
+                        end) 
+                        
+                        -- Alterado para 40 para suavizar as 39 requisições restantes do final
+                        if m % 40 == 0 then 
+                            task.wait() 
+                        end 
+                    end 
+                    
+                    task.spawn(function() 
+                        local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose") 
+                        if fireHose then 
+                            local toolSound = fireHose:FindFirstChild("ToolSound") 
+                            if toolSound then 
+                                pcall(function() 
+                                    toolSound:FireServer(unpack(args2)) 
+                                end) 
+                            end 
+                        end 
+                    end) 
+                end) 
+                -- Pequena pausa entre os ciclos principais para estabilizar o FPS do cliente
+                task.wait(0.05) 
+            end 
+        end 
+    end 
 })
 
 local function FlingBall(target)
