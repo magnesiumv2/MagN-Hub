@@ -1396,6 +1396,7 @@ local function ExecuteKillCouch(target)
         end
         task.wait(0.01)
 
+        -- Define a altura de destruição para um valor gigante para o sofá não sumir antes da hora
         workspace.FallenPartsDestroyHeight = -999999
 
         local handle = tool and tool:FindFirstChild("Handle")
@@ -1403,7 +1404,7 @@ local function ExecuteKillCouch(target)
             handle.FlingForce:Destroy()
         end
 
-        -- 3. Cria a força na Handle do Sofá (Sem soltar da mão)
+        -- 3. Cria a força na Handle do Sofá para a perseguição
         local bv = nil
         if handle then
             handle.CanCollide = false
@@ -1425,7 +1426,6 @@ local function ExecuteKillCouch(target)
         while target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and handle and handle:IsDescendantOf(workspace) do
             local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
             
-            -- Para de seguir se ele sentar, morrer de fato ou redefinir
             if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
             
             angle = (angle + 50) % 360
@@ -1444,21 +1444,30 @@ local function ExecuteKillCouch(target)
         end
         
         -- =============================================================================
-        -- [AÇÃO COMPORTAMENTAL: KILL] - Joga no Void junto com o LocalPlayer
+        -- [AÇÃO COMPORTAMENTAL: KILL INSTANTÂNEO NO VOID]
         -- =============================================================================
         if tHum and tHum.Sit and handle then
-            local voidCFrame = CFrame.new(target.Character.HumanoidRootPart.Position.X, -450, target.Character.HumanoidRootPart.Position.Z)
-            
-            -- Teleporta o cabo da ferramenta e você juntos para o fundo do void
+            -- Para o Fling imediatamente para o alvo ficar estático no sofá
+            if bv then bv:Destroy() end
+            handle.Velocity = Vector3.zero
+            handle.RotVelocity = Vector3.zero
+            task.wait(0.01)
+
+            -- Teleporta o sofá e você para milímetros antes da zona de morte (-498)
+            local voidCFrame = CFrame.new(target.Character.HumanoidRootPart.Position.X, -498, target.Character.HumanoidRootPart.Position.Z)
             root.CFrame = voidCFrame
             handle.CFrame = voidCFrame
-            task.wait(0.4) -- Tempo para processar a morte dele no void
+            task.wait(0.02)
+
+            -- Ativa a propriedade de morte por Void nativa do Roblox de volta para -500.
+            -- Como ele está em Y = -498 (milímetros acima), o motor do jogo mata ele de forma limpa e instantânea.
+            workspace.FallenPartsDestroyHeight = -500
+            task.wait(0.2) -- Espera o servidor registrar o Kill dele
             
             if tool then tool:Destroy() end
         end
         
         -- --- ROTINA DE RECUPERAÇÃO DO SEU REPOSITÓRIO ---
-        if bv then bv:Destroy() end
         if hum then
             hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
             hum.PlatformStand = false
@@ -1484,7 +1493,7 @@ local function ExecuteKillCouch(target)
             end
             task.wait(0.01)
             
-            -- Passo 3: Teleporta de volta
+            -- Passo 3: Teleporta de volta para cima
             root.CFrame = originalCFrame
         end
         
