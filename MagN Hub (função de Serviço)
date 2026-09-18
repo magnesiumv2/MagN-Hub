@@ -799,11 +799,13 @@ Troll:AddToggle({
         end
     })
 
--- Variáveis globais de controle para os métodos
-local currentMethod = "Ball" -- Método padrão inicial
+-- =============================================================================
+-- CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+-- =============================================================================
+local currentMethod = "Ball"
 local flingActive = false
 
--- Função Auxiliar do Fling Ball (Otimizada e com Física Estabilizada)
+-- --- MÉTODO 1: FLING BALL ---
 local function ExecuteFlingBall(target)
     local players = game:GetService("Players")
     local player = players.LocalPlayer
@@ -824,7 +826,6 @@ local function ExecuteFlingBall(target)
     end
 
     local Ball = ServerBalls:FindFirstChild("Soccer" .. player.Name) or GetBall()
-    
     Ball.CanCollide = true 
     Ball.Massless = false  
     Ball.CustomPhysicalProperties = PhysicalProperties.new(100, 0, 0, 100, 100) 
@@ -852,12 +853,11 @@ local function ExecuteFlingBall(target)
             bv.Parent = Ball
 
             workspace.CurrentCamera.CameraSubject = thum
-            
             local angle = 0
+            
             while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == players do
                 angle = (angle + 45) % 360
                 local predictedPos = troot.Position + (troot.Velocity * 0.15)
-                
                 Ball.CFrame = CFrame.new(predictedPos + Vector3.new(0, -1, 0)) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
                 Ball.Velocity = Vector3.new(5e7, 5e7, 5e7)
                 Ball.RotVelocity = Vector3.new(5e7, 5e7, 5e7)
@@ -872,124 +872,135 @@ local function ExecuteFlingBall(target)
     end
 end
 
--- Função Auxiliar do Fling Couch (Otimizada para não cair a Internet)
+-- --- MÉTODO 2: FLING COUCH ---
 local function ExecuteFlingCouch(target)
     local players = game:GetService("Players")
     local player = players.LocalPlayer
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local originalCFrame = root and root.CFrame 
 
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
         local tHum = target.Character:FindFirstChildOfClass("Humanoid")
-        local tRoot = target.Character:FindFirstChild("Head")
         
-        if not tHum.Sit and root and tRoot and hum then
-            local tool = char:FindFirstChild("Couch") or player.Backpack:FindFirstChild("Couch")
-            if not tool then
+        if not tHum.Sit then
+            local tRoot = target.Character:FindFirstChild("Head")
+            
+            if root and tRoot and hum then
                 local argsClean = {"ClearAllTools"}
                 game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
-                task.wait(0.03)
+                task.wait(0.0001)
 
-                local argsGet = {"PickingTools", "Couch"}
+                local argsGet = {
+                    [1] = "PickingTools",
+                    [2] = "Couch"
+                }
                 game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
-                task.wait(0.03)
-                
-                tool = player.Backpack:FindFirstChild("Couch")
-            end
+                task.wait(0.0001)
 
-            if tool and tool.Parent ~= char then
-                tool.Parent = char
-                task.wait(0.02)
-            end
-
-            workspace.FallenPartsDestroyHeight = -999999
-
-            if root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
-
-            local bv = Instance.new("BodyVelocity")
-            bv.Name = "FlingForce"
-            bv.Velocity = Vector3.new(5e7, 5e7, 5e7) 
-            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            bv.Parent = root
-            
-            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-            hum.PlatformStand = false
-            workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
-
-            task.wait(0.03)
-
-            local vim = game:GetService("VirtualInputManager")
-            vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-            task.wait(0.02)
-            vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
-
-            local angle = 0
-            while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") do
-                local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
-                if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
-                
-                angle = (angle + 45) % 360
-                local pos_x = target.Character.Head.Position.X + (target.Character.Head.Velocity.X / 1.5)
-                local pos_y = target.Character.Head.Position.Y + (target.Character.Head.Velocity.Y / 1.5)
-                local pos_z = target.Character.Head.Position.Z + (target.Character.Head.Velocity.Z / 1.5)
-                
-                root.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
-                root.Velocity = Vector3.new(5e7, 5e7, 5e7)
-                root.RotVelocity = Vector3.new(5e7, 5e7, 5e7)
-                task.wait()
-            end
-            
-            if bv then bv:Destroy() end
-            if hum then
-                hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-                hum.PlatformStand = false
-                hum:UnequipTools()
-            end
-            
-            if root and originalCFrame then
-                root.CFrame = originalCFrame
-                for _, p in pairs(char:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        p.Velocity = Vector3.zero
-                        p.RotVelocity = Vector3.zero
-                    end
+                local tool = player.Backpack:FindFirstChild("Couch")
+                if tool then
+                    tool.Parent = char
                 end
+                task.wait(0.0001)
+
+                workspace.FallenPartsDestroyHeight = -999999
+
+                local handle = tool:FindFirstChild("Handle")
+                if handle and handle:FindFirstChild("FlingForce") then
+                    handle.FlingForce:Destroy()
+                end
+
+                local bv = nil
+                if handle then
+                    handle.CanCollide = false
+                    bv = Instance.new("BodyVelocity")
+                    bv.Name = "FlingForce"
+                    bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                    bv.Parent = handle
+                end
+                
+                hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                hum.PlatformStand = false
+                
+                workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
+                task.wait(0.001)
+
+                local vim = game:GetService("VirtualInputManager")
+                vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+                task.wait(0.0001)
+                vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+
+                local angle = 0
+                while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and handle and handle:IsDescendantOf(workspace) do
+                    local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
+                    if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
+                    
+                    angle = (angle + 50) % 360
+
+                    local pos_x = target.Character.Head.Position.X
+                    local pos_y = target.Character.Head.Position.Y
+                    local pos_z = target.Character.Head.Position.Z
+                    pos_x = pos_x + (target.Character.HumanoidRootPart.Velocity.X / 1.5)
+                    pos_y = pos_y + (target.Character.HumanoidRootPart.Velocity.Y / 1.5)
+                    pos_z = pos_z + (target.Character.HumanoidRootPart.Velocity.Z / 1.5)
+                    
+                    root.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+                    
+                    handle.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                    handle.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+                    task.wait()
+                end
+                
+                if bv then bv:Destroy() end
+                if hum then
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                    hum.PlatformStand = false
+                    hum:UnequipTools()
+                end
+                workspace.CurrentCamera.CameraSubject = hum
+                game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
             end
-            workspace.CurrentCamera.CameraSubject = hum
-            task.wait(0.05)
         end
     end
 end
 
--- ==================== ELEMENTOS DA SUA INTERFACE (GUI) ====================
+-- =============================================================================
+-- CRIAÇÃO DOS ELEMENTOS GRÁFICOS DO REDz HUB
+-- =============================================================================
 
--- 1. Dropdown para escolher qual método usar
-Troll:AddDropdown({
-    Name = "Métodos",
-    Default = "Ball",
+-- 1. Dropdown para selecionar o método de ataque
+TrollTab:AddDropdown({
+    Name = "Fling Method",
+    Description = "Selecione o objeto de ataque",
     Options = {"Ball", "Couch"},
+    Default = "Ball",
     Callback = function(selectedOption)
         currentMethod = selectedOption
     end
 })
 
--- 2. Toggle Unificado que liga e desliga o método escolhido na Dropdown
-Troll:AddToggle({
-    Name = "Fling",
+-- 2. Toggle principal com loop e rotina de retorno fixo
+TrollTab:AddToggle({
+    Name = "Execute Fling Attack",
+    Description = "Ativa o ataque contínuo no alvo selecionado",
     Default = false,
     Callback = function(state)
         flingActive = state
         
         if state then
             task.spawn(function()
+                local localChar = game:GetService("Players").LocalPlayer.Character
+                local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+                local originalCFrame = localRoot and localRoot.CFrame 
+
+                -- Loop que mantém o ataque rodando enquanto o botão estiver ligado
                 while flingActive do
                     if selectedPlayerName then
                         local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
                         
                         if target then
-                            -- Verifica qual método está selecionado na dropdown e executa
                             if currentMethod == "Ball" then
                                 ExecuteFlingBall(target)
                             elseif currentMethod == "Couch" then
@@ -997,21 +1008,19 @@ Troll:AddToggle({
                             end
                         end
                     end
-                    task.wait(0.5) -- Pausa estável para reavaliar o alvo e respirar a rede
-                end
-            end)
-        else
-            -- Garante a interrupção física imediata ao desligar o botão principal
-            flingActive = false
-            
-            local char = game:GetService("Players").LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if root and root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
-            if hum then workspace.CurrentCamera.CameraSubject = hum end
-        end
-    end
-})
+                    
+                    -- Se o alvo sumir/morrer, te puxa de volta e limpa a física
+                    if localRoot and originalCFrame and flingActive then
+                        localRoot.CFrame = originalCFrame
+                        for _, part in pairs(localChar:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.Velocity = Vector3.zero
+                                part.RotVelocity = Vector3.zero
+                            end
+                        end
+                    end
+                    
+                    task.wait(0.5)
 
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
 Anti:AddToggle({
