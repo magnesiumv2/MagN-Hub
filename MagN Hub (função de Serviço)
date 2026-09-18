@@ -1214,79 +1214,140 @@ local function ExecuteBringCouch(target)
     local player = players.LocalPlayer
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
     
-    if not root or not target or not target.Character then 
-        warn("MagN Hub: Alvo inválido!")
-        return 
-    end
+    if not root or not hum or not target or not target.Character then return end
 
-    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    local tRoot = target.Character:FindFirstChild("Head")
     local tHum = target.Character:FindFirstChildOfClass("Humanoid")
     if not tRoot or not tHum then return end
 
-    -- [TRAVA INICIAL]: Se o alvo já estiver sentado, cancela imediatamente
-    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
-        warn("MagN Hub: O alvo já está sentado. Ação cancelada.")
-        return
-    end
+    -- Se o alvo já estiver sentado em algo antes de começar, cancela
+    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then return end
 
     task.spawn(function()
-        -- Encontra um sofá disponível no mapa
-        local couchSeat = nil
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Seat") and (obj.Name:lower():find("couch") or obj.Name:lower():find("sofa")) then
-                if not obj.Occupant then
-                    couchSeat = obj
-                    break
+        local originalCFrame = root.CFrame
+
+        -- Garante que seu corpo está totalmente móvel no início do ataque
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Anchored = false
+            end
+        end
+
+        -- 1. Limpa as ferramentas antigas
+        local argsClean = {"ClearAllTools"}
+        game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
+        task.wait(0.01)
+
+        -- 2. Pega o Sofá
+        local argsGet = {
+            [1] = "PickingTools",
+            [2] = "Couch"
+        }
+        game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
+        task.wait(0.01)
+
+        local tool = player.Backpack:FindFirstChild("Couch")
+        if tool then
+            tool.Parent = char
+        end
+        task.wait(0.01)
+
+        workspace.FallenPartsDestroyHeight = -999999
+
+        local handle = tool and tool:FindFirstChild("Handle")
+        if handle and handle:FindFirstChild("FlingForce") then
+            handle.FlingForce:Destroy()
+        end
+
+        -- 3. Cria a força na Handle do Sofá (Sem soltar da mão)
+        local bv = nil
+        if handle then
+            handle.CanCollide = false
+            bv = Instance.new("BodyVelocity")
+            bv.Name = "FlingForce"
+            bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Parent = handle
+        end
+        
+        hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        hum.PlatformStand = false
+
+        workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
+        task.wait(0.01)
+
+        local angle = 0
+        -- Loop interno do ataque (Segue colado até capturar)
+        while target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and handle and handle:IsDescendantOf(workspace) do
+            local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
+            
+            -- Para de seguir se ele sentar, morrer de fato ou redefinir
+            if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
+            
+            angle = (angle + 50) % 360
+
+            local pos_x = target.Character.HumanoidRootPart.Position.X
+            local pos_y = target.Character.HumanoidRootPart.Position.Y
+            local pos_z = target.Character.HumanoidRootPart.Position.Z
+            pos_x = pos_x + (target.Character.HumanoidRootPart.Velocity.X / 1.5)
+            pos_y = pos_y + (target.Character.HumanoidRootPart.Velocity.Y / 1.5)
+            pos_z = pos_z + (target.Character.HumanoidRootPart.Velocity.Z / 1.5)
+            
+            handle.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+            handle.Velocity = Vector3.new(9e8, 9e8, 9e8)
+            handle.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+            task.wait()
+        end
+        
+        -- =============================================================================
+        -- [AÇÃO COMPORTAMENTAL: BRING] - Teleporta o Sofá de Volta para a Base
+        -- =============================================================================
+        if tHum and tHum.Sit and handle then
+            -- Reduz as forças violentas para trazê-lo de maneira firme e estável
+            handle.Velocity = Vector3.zero
+            handle.RotVelocity = Vector3.zero
+            if bv then bv:Destroy() end
+            
+            -- Puxa o cabo da ferramenta trazendo o personagem alvo direto para onde você está
+            handle.CFrame = originalCFrame * CFrame.new(0, 2, -5)
+            task.wait(0.3)
+            
+            if tool then tool:Destroy() end
+        end
+        
+        -- --- ROTINA DE RECUPERAÇÃO DO SEU REPOSITÓRIO ---
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            hum.PlatformStand = false
+            hum:UnequipTools()
+        end
+        
+        if char and root and originalCFrame then
+            -- Passo 1: Congela
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = true
+                    part.Velocity = Vector3.zero
+                    part.RotVelocity = Vector3.zero
                 end
             end
-        end
-
-        if not couchSeat then return end
-
-        local tentativas = 0
-        -- Persegue o alvo em pé. Se ele sentar em algo no caminho, o loop quebra
-        while couchSeat.Occupant == nil and tentativas < 15 and target.Character and tRoot:IsDescendantOf(workspace) do
-            -- [TRAVA DE PERSEGUIÇÃO]: Se ele sentar em algo enquanto o couch tenta pegá-lo, cancela tudo
-            if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
-                break
-            end
+            task.wait(0.05)
             
-            couchSeat.CFrame = tRoot.CFrame * CFrame.new(0, -0.5, 0)
-            tentativas = tentativas + 1
-            task.wait(0.02)
+            -- Passo 2: Descongela
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = false
+                end
+            end
+            task.wait(0.01)
+            
+            -- Passo 3: Teleporta de volta
+            root.CFrame = originalCFrame
         end
-
-        task.wait(0.05)
-
-        -- Só executa a força se quem sentou no sofá foi estritamente o nosso alvo
-        if couchSeat.Occupant and couchSeat.Occupant.Parent == target.Character then
-            pcall(function()
-                local bv = couchSeat:FindFirstChild("CouchForce") or Instance.new("BodyVelocity")
-                bv.Name = "CouchForce"
-                bv.Velocity = Vector3.new(0, 5, 0)
-                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bv.Parent = couchSeat
-
-                local bav = couchSeat:FindFirstChild("CouchRot") or Instance.new("BodyAngularVelocity")
-                bav.Name = "CouchRot"
-                bav.AngularVelocity = Vector3.new(0, 50, 0)
-                bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-                bav.Parent = couchSeat
-
-                task.wait(0.05)
-
-                couchSeat.CFrame = root.CFrame * CFrame.new(0, 2, -5)
-                
-                task.wait(0.4)
-                bv:Destroy()
-                bav:Destroy()
-            end)
-        else
-            -- Limpa a velocidade caso tenha sido cancelado no meio do caminho
-            couchSeat.Velocity = Vector3.zero
-            couchSeat.RotVelocity = Vector3.zero
-        end
+        
+        workspace.CurrentCamera.CameraSubject = hum
     end)
 end
 
@@ -1295,87 +1356,139 @@ local function ExecuteKillCouch(target)
     local player = players.LocalPlayer
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
     
-    if not root or not target or not target.Character then 
-        warn("MagN Hub: Alvo inválido!")
-        return 
-    end
+    if not root or not hum or not target or not target.Character then return end
 
-    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    local tRoot = target.Character:FindFirstChild("Head")
     local tHum = target.Character:FindFirstChildOfClass("Humanoid")
     if not tRoot or not tHum then return end
 
-    -- [TRAVA INICIAL]: Se o alvo já estiver sentado, cancela imediatamente
-    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
-        warn("MagN Hub: O alvo já está sentado. Ação cancelada.")
-        return
-    end
+    -- Se o alvo já estiver sentado em algo antes de começar, cancela
+    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then return end
 
     task.spawn(function()
         local originalCFrame = root.CFrame
 
-        -- Encontra um sofá disponível no mapa
-        local couchSeat = nil
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Seat") and (obj.Name:lower():find("couch") or obj.Name:lower():find("sofa")) then
-                if not obj.Occupant then
-                    couchSeat = obj
-                    break
+        -- Garante que seu corpo está totalmente móvel no início do ataque
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Anchored = false
+            end
+        end
+
+        -- 1. Limpa as ferramentas antigas
+        local argsClean = {"ClearAllTools"}
+        game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
+        task.wait(0.01)
+
+        -- 2. Pega o Sofá
+        local argsGet = {
+            [1] = "PickingTools",
+            [2] = "Couch"
+        }
+        game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
+        task.wait(0.01)
+
+        local tool = player.Backpack:FindFirstChild("Couch")
+        if tool then
+            tool.Parent = char
+        end
+        task.wait(0.01)
+
+        workspace.FallenPartsDestroyHeight = -999999
+
+        local handle = tool and tool:FindFirstChild("Handle")
+        if handle and handle:FindFirstChild("FlingForce") then
+            handle.FlingForce:Destroy()
+        end
+
+        -- 3. Cria a força na Handle do Sofá (Sem soltar da mão)
+        local bv = nil
+        if handle then
+            handle.CanCollide = false
+            bv = Instance.new("BodyVelocity")
+            bv.Name = "FlingForce"
+            bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Parent = handle
+        end
+        
+        hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        hum.PlatformStand = false
+
+        workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
+        task.wait(0.01)
+
+        local angle = 0
+        -- Loop interno do ataque (Segue colado até capturar)
+        while target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and handle and handle:IsDescendantOf(workspace) do
+            local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
+            
+            -- Para de seguir se ele sentar, morrer de fato ou redefinir
+            if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
+            
+            angle = (angle + 50) % 360
+
+            local pos_x = target.Character.HumanoidRootPart.Position.X
+            local pos_y = target.Character.HumanoidRootPart.Position.Y
+            local pos_z = target.Character.HumanoidRootPart.Position.Z
+            pos_x = pos_x + (target.Character.HumanoidRootPart.Velocity.X / 1.5)
+            pos_y = pos_y + (target.Character.HumanoidRootPart.Velocity.Y / 1.5)
+            pos_z = pos_z + (target.Character.HumanoidRootPart.Velocity.Z / 1.5)
+            
+            handle.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+            handle.Velocity = Vector3.new(9e8, 9e8, 9e8)
+            handle.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+            task.wait()
+        end
+        
+        -- =============================================================================
+        -- [AÇÃO COMPORTAMENTAL: KILL] - Joga no Void junto com o LocalPlayer
+        -- =============================================================================
+        if tHum and tHum.Sit and handle then
+            local voidCFrame = CFrame.new(target.Character.HumanoidRootPart.Position.X, -450, target.Character.HumanoidRootPart.Position.Z)
+            
+            -- Teleporta o cabo da ferramenta e você juntos para o fundo do void
+            root.CFrame = voidCFrame
+            handle.CFrame = voidCFrame
+            task.wait(0.4) -- Tempo para processar a morte dele no void
+            
+            if tool then tool:Destroy() end
+        end
+        
+        -- --- ROTINA DE RECUPERAÇÃO DO SEU REPOSITÓRIO ---
+        if bv then bv:Destroy() end
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            hum.PlatformStand = false
+            hum:UnequipTools()
+        end
+        
+        if char and root and originalCFrame then
+            -- Passo 1: Congela
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = true
+                    part.Velocity = Vector3.zero
+                    part.RotVelocity = Vector3.zero
                 end
             end
-        end
-
-        if not couchSeat then return end
-
-        local tentativas = 0
-        -- Persegue o alvo em pé. Se ele sentar em algo no caminho, o loop quebra
-        while couchSeat.Occupant == nil and tentativas < 15 and target.Character and tRoot:IsDescendantOf(workspace) do
-            -- [TRAVA DE PERSEGUIÇÃO]: Se ele sentar em algo enquanto o couch tenta pegá-lo, cancela tudo
-            if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
-                break
-            end
+            task.wait(0.05)
             
-            couchSeat.CFrame = tRoot.CFrame * CFrame.new(0, -0.5, 0)
-            tentativas = tentativas + 1
-            task.wait(0.02)
+            -- Passo 2: Descongela
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = false
+                end
+            end
+            task.wait(0.01)
+            
+            -- Passo 3: Teleporta de volta
+            root.CFrame = originalCFrame
         end
-
-        task.wait(0.05)
-
-        -- Só envia para o void se o alvo foi capturado com sucesso no sofá
-        if couchSeat.Occupant and couchSeat.Occupant.Parent == target.Character then
-            pcall(function()
-                local bv = Instance.new("BodyVelocity")
-                bv.Velocity = Vector3.new(9e7, -9e7, 9e7)
-                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bv.Parent = couchSeat
-
-                local bav = Instance.new("BodyAngularVelocity")
-                bav.AngularVelocity = Vector3.new(9e7, 9e7, 9e7)
-                bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-                bav.Parent = couchSeat
-
-                task.wait(0.05)
-
-                -- Teleporta ambos para a borda superior do Void
-                local voidCFrame = CFrame.new(couchSeat.Position.X, -450, couchSeat.Position.Z)
-                root.CFrame = voidCFrame
-                couchSeat.CFrame = voidCFrame
-
-                task.wait(0.4) -- Tempo para processar a queda física
-
-                -- Destrói as forças e retorna seu personagem em segurança
-                bv:Destroy()
-                bav:Destroy()
-                root.Velocity = Vector3.zero
-                root.RotVelocity = Vector3.zero
-                root.CFrame = originalCFrame
-            end)
-        else
-            -- Reseta o sofá caso a captura tenha sido cancelada
-            couchSeat.Velocity = Vector3.zero
-            couchSeat.RotVelocity = Vector3.zero
-        end
+        
+        workspace.CurrentCamera.CameraSubject = hum
     end)
 end
 
