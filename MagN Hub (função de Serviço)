@@ -1743,43 +1743,79 @@ local Car = Window:MakeTab({ Title = "Carro", Icon = "rbxassetid://4483345998" }
 
 Car:AddSection({"Velocidade do Carro"})
 
-local velocidadeCarroSelecionada = 0 -- Variável que vai guardar o número digitado na Textbox
+local RunService = game:GetService("RunService")
+local velocidadeCarroSelecionada = 0
+local speedLoopConnection = nil -- Conexão externa na memória do callback
 
--- 1. Criação da TextBox na sua aba Car
+-- 1. TextBox para digitar a velocidade desejada
 Car:AddTextBox({
     Name = "Velocidade do Carro",
     Default = "100",
     Callback = function(texto)
-        -- Converte o texto digitado em número de forma segura
         velocidadeCarroSelecionada = tonumber(texto) or 0
     end
 })
 
--- 2. Criação do Botão para aplicar a velocidade na sua aba Car
+-- 2. Botão corrigido com Bypass de loop físico para o Brookhaven
 Car:AddButton({
     Name = "Aplicar Velocidade",
     Callback = function()
         local player = game:GetService("Players").LocalPlayer
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
         
-        -- Verifica se o jogador está sentado no banco do motorista
-        if hum and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
-            local seat = hum.SeatPart
-            
-            -- Altera a velocidade máxima nativa do assento do carro
-            seat.MaxSpeed = velocidadeCarroSelecionada
-            
-            -- Remove o limite de força da mola física do veículo para correr de verdade
-            if seat:FindFirstChildOfClass("LinearVelocity") then
-                seat:FindFirstChildOfClass("LinearVelocity").MaxForce = math.huge
-            end
-            
-            print("MagN Hub: Velocidade do veículo modificada para: " .. velocidadeCarroSelecionada)
-        else
-            -- Aviso caso o usuário clique no botão estando a pé
-            warn("MagN Hub: Você precisa estar sentado no banco do motorista de um carro!")
+        -- Limpa loops de velocidade anteriores se o botão for clicado de novo
+        if speedLoopConnection then 
+            speedLoopConnection:Disconnect() 
+            speedLoopConnection = nil
         end
+        
+        print("MagN Hub: Modificador de velocidade injetado no motor do carro.")
+        
+        -- Inicia o loop contínuo em tempo real para combater a trava de velocidade do jogo
+        speedLoopConnection = RunService.Heartbeat:Connect(function()
+            local char = player.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            
+            -- Verifica se você ainda está sentado no banco do motorista
+            if hum and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
+                local seat = hum.SeatPart
+                local carModel = seat.Parent
+                
+                -- Altera a velocidade no assento
+                seat.MaxSpeed = velocidadeCarroSelecionada
+                
+                -- Varre o chassi do carro do Brookhaven procurando e forçando a velocidade linear
+                for _, obj in pairs(carModel:GetDescendants()) do
+                    if obj:IsA("LinearVelocity") then
+                        -- Remove o limite de mola física do Brookhaven
+                        obj.MaxForce = math.huge
+                        
+                        -- Força o carro a ir para frente na velocidade exata digitada
+                        -- No Brookhaven, o eixo -Z ou o VectorVelocity controla o empuxo linear
+                        if obj.RelativeTo == Enum.ActuatorRelativeTo.Attachment0 then
+                            obj.VectorVelocity = Vector3.new(0, 0, -velocidadeCarroSelecionada)
+                        else
+                            -- Caso o veículo use a orientação global do Workspace
+                            obj.VectorVelocity = seat.CFrame.LookVector * velocidadeCarroSelecionada
+                        end
+                    elseif obj:IsA("BodyVelocity") then
+                        obj.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                        obj.Velocity = seat.CFrame.LookVector * velocidadeCarroSelecionada
+                    end
+                    
+                    -- Ajusta as rodas para o carro não capotar nem deslizar nas curvas em alta velocidade
+                    if obj:IsA("BasePart") and (obj.Name:lower():find("wheel") or obj.Name:lower():find("roda")) then
+                        obj.CustomPhysicalProperties = PhysicalProperties.new(2, 0.5, 0.5, 1, 1)
+                    end
+                end
+            else
+                -- Se você sair do carro ou morrer, o loop desliga sozinho para poupar a memória do dispositivo
+                if speedLoopConnection then
+                    speedLoopConnection:Disconnect()
+                    speedLoopConnection = nil
+                    print("MagN Hub: Você saiu do veículo, loop de velocidade desligado.")
+                end
+            end
+        end)
     end
 })
 
@@ -1787,146 +1823,86 @@ Car:AddSection({"Remover Veículo"})
 
 local vehiclesFolder = workspace:FindFirstChild("Vehicles")
 local veiculoSelecionadoParaRemover = ""
-local meuDropdown = nil -- Guardará a referência do componente para atualizar
+local meuDropdown = nil
 
--- Função interna para escanear a pasta e coletar os nomes dos carros atuais
+-- Função que lê o dono do carro e formata como "Player's Car" ou "NomeDoModelo" se estiver vazio
 local function ObterListaDeCarros()
     local lista = {}
     if vehiclesFolder then
         for _, vehicle in pairs(vehiclesFolder:GetChildren()) do
-            table.insert(lista, vehicle.Name)
+            -- Procura quem é o dono real do veículo no Brookhaven
+            local ownerName = vehicle:GetAttribute("Owner") or (vehicle:FindFirstChild("Owner") and vehicle.Owner.Value)
+            
+            if ownerName and ownerName ~= "" then
+                -- Formata exatamente no padrão que você pediu (Ex: Player1's Car)
+                table.insert(lista, ownerName .. "'s Car")
+            else
+                -- Caso o carro seja do mapa ou gerado sem dono
+                table.insert(lista, vehicle.Name)
+            end
         end
     end
     return lista
 end
 
--- 1. Criação da Dropdown (salvando na variável 'meuDropdown')
+-- Substitua o componente Dropdown da aba Car por este:
 meuDropdown = Car:AddDropdown({
     Name = "Selecionar Carro para Remover",
-    Options = ObterListaDeCarros(), -- Carrega com os carros que já estão no servidor
+    Options = ObterListaDeCarros(),
     Callback = function(opcao)
         veiculoSelecionadoParaRemover = opcao
     end
 })
 
--- 2. Sistema Automático de Escuta (Ouvindo o Workspace em tempo real)
+-- Monitoramento automático: atualiza o menu sempre que um carro aparece ou some
 if vehiclesFolder then
-    -- Sempre que um carro NOVO aparecer no Brookhaven
     vehiclesFolder.ChildAdded:Connect(function()
-        task.wait(0.1) -- Pequeno delay para o nome do carro carregar completamente
+        task.wait(0.2) -- Tempo para o Brookhaven indexar o Owner do carro
         if meuDropdown and (meuDropdown.SetOptions or meuDropdown.Refresh) then
-            local atualizarFuncao = meuDropdown.SetOptions or meuDropdown.Refresh
-            atualizarFuncao(meuDropdown, ObterListaDeCarros())
+            local fn = meuDropdown.SetOptions or meuDropdown.Refresh
+            fn(meuDropdown, ObterListaDeCarros())
         end
     end)
-
-    -- Sempre que um carro SUMIR ou for deletado no Brookhaven
     vehiclesFolder.ChildRemoved:Connect(function()
         task.wait(0.1)
         if meuDropdown and (meuDropdown.SetOptions or meuDropdown.Refresh) then
-            local atualizarFuncao = meuDropdown.SetOptions or meuDropdown.Refresh
-            atualizarFuncao(meuDropdown, ObterListaDeCarros())
+            local fn = meuDropdown.SetOptions or meuDropdown.Refresh
+            fn(meuDropdown, ObterListaDeCarros())
         end
     end)
 end
 
--- 3. Botão para remover o carro que o usuário escolheu na lista dinâmica
+-- BOTÃO: Remover o Único Selecionado na Dropdown
 Car:AddButton({
     Name = "Remover Carro Selecionado",
     Callback = function()
-        if veiculoSelecionadoParaRemover == "" then
-            warn("MagN Hub: Escolha um veículo na lista automática primeiro!")
-            return
-        end
-        
+        if veiculoSelecionadoParaRemover == "" then return end
         if vehiclesFolder then
-            local carroAlvo = vehiclesFolder:FindFirstChild(veiculoSelecionadoParaRemover)
-            if carroAlvo then
-                pcall(function()
-                    carroAlvo:Destroy() -- Some da sua tela localmente
-                end)
-                print("MagN Hub: Veículo desfeito: " .. veiculoSelecionadoParaRemover)
-                veiculoSelecionadoParaRemover = "" -- Reseta a escolha
-            else
-                warn("MagN Hub: Este veículo já desapareceu do mapa.")
+            for _, vehicle in pairs(vehiclesFolder:GetChildren()) do
+                local ownerName = vehicle:GetAttribute("Owner") or (vehicle:FindFirstChild("Owner") and vehicle.Owner.Value)
+                local formatoEsperado = ownerName and (ownerName .. "'s Car") or vehicle.Name
+                
+                -- Se o texto do formato bater com o que foi clicado no dropdown, destrói o carro
+                if formatoEsperado == veiculoSelecionadoParaRemover then
+                    pcall(function() vehicle:Destroy() end)
+                    break
+                end
             end
+            veiculoSelecionadoParaRemover = "" -- Reseta a seleção
         end
     end
 })
 
+-- BOTÃO: Remover Todos os Carros do Mapa
 Car:AddButton({
-    Name = "Jogar Todos os Carros Vazios no Void",
+    Name = "Remover Todos os Carros",
     Callback = function()
-        local players = game:GetService("Players")
-        local player = players.LocalPlayer
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        
-        if not root or not hum then return end
-        
-        local vehiclesFolder = workspace:FindFirstChild("Vehicles")
-        if not vehiclesFolder or #vehiclesFolder:GetChildren() == 0 then
-            warn("MagN Hub: Nenhum veículo encontrado no mapa para descartar!")
-            return
-        end
-
-        task.spawn(function()
-            -- 1. Salva a posição inicial de onde você clicou no botão do Hub
-            local originalCFrame = root.CFrame
-            
-            -- Desativa o limite do Void temporariamente para os carros não sumirem antes de você pular de cada um
-            local oldVoidHeight = workspace.FallenPartsDestroyHeight
-            workspace.FallenPartsDestroyHeight = -999999
-            
-            -- Reativa a capacidade de seu humanoid se sentar
-            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-            hum.PlatformStand = false
-            
-            -- 2. Inicia o loop varrendo todos os veículos do Brookhaven
-            for _, carroModelo in pairs(vehiclesFolder:GetChildren()) do
-                if carroModelo and carroModelo:IsDescendantOf(workspace) then
-                    local driveSeat = carroModelo:FindFirstChild("VehicleSeat") or carroModelo:FindFirstChildOfClass("VehicleSeat")
-                    
-                    -- Condição: Só executa se o banco do motorista estiver TOTALMENTE VAZIO
-                    if driveSeat and driveSeat.Occupant == nil then
-                        pcall(function()
-                            -- Teleporta você para cima do assento e força a entrada
-                            root.CFrame = driveSeat.CFrame * CFrame.new(0, 0.5, 0)
-                            driveSeat:Sit(hum)
-                            
-                            -- Aguarda a sincronização da propriedade física de rede (Network Ownership)
-                            task.wait(0.15) 
-                            
-                            -- Joga o assento (e o carro inteiro) nas profundezas do Void (-450)
-                            driveSeat.CFrame = CFrame.new(driveSeat.Position.X, -450, driveSeat.Position.Z)
-                            task.wait(0.08)
-                            
-                            -- Força você a pular para se desvincular do carro descartado
-                            hum.PlatformStand = false
-                            hum:JumpAtCharacterHierarchy()
-                            
-                            -- Zera suas forças cinéticas para você não acumular velocidade na queda
-                            root.Velocity = Vector3.zero
-                            root.RotVelocity = Vector3.zero
-                            task.wait(0.02)
-                        end)
-                    end
-                end
+        if vehiclesFolder then
+            for _, vehicle in pairs(vehiclesFolder:GetChildren()) do
+                pcall(function() vehicle:Destroy() end)
             end
-            
-            -- 3. Restaura as configurações originais do mapa
-            workspace.FallenPartsDestroyHeight = oldVoidHeight
-            
-            -- 4. Teleporta você de volta exatamente para onde o botão foi clicado
-            root.Velocity = Vector3.zero
-            root.RotVelocity = Vector3.zero
-            task.wait(0.01)
-            root.CFrame = originalCFrame
-            
-            -- Mensagem exata solicitada impressa no console do exploit
             print("todos os carros foram removidos")
-        end)
+        end
     end
 })
 
@@ -2040,28 +2016,47 @@ House:AddButton({
 House:AddButton({
     Name = "Ativar Todos os Alarmes",
     Callback = function()
+        local players = game:GetService("Players")
+        local player = players.LocalPlayer
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
+        
+        if not root then 
+            warn("MagN Hub: Você precisa estar vivo no mapa!")
+            return 
+        end
         
         task.spawn(function()
             local originalCFrame = root.CFrame
             
-            -- Procura por todos os sensores de presença ou portas principais das casas
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and (v.Name == "HouseAlarmSensor" or v.Name == "MainDoorSensor") then
-                    pcall(function()
-                        -- Teleporta na velocidade da luz passando pelo sensor para acionar o alarme
-                        root.CFrame = v.CFrame
-                        task.wait(0.05)
-                    end)
+            -- Encontra a pasta onde ficam todos os lotes residenciais do Brookhaven
+            local lotsFolder = workspace:FindFirstChild("001_Lots") or workspace
+            local alarmesDisparados = 0
+            
+            for _, lote in pairs(lotsFolder:GetChildren()) do
+                -- Verifica se o lote tem uma casa ativa construída por algum jogador
+                if lote:FindFirstChild("HousePickedByPlayer") or lote.Name:match("^Plot") then
+                    -- Busca por qualquer parte que sirva de colisão para a entrada, garagem ou campainha
+                    for _, v in pairs(lote:GetDescendants()) do
+                        if v:IsA("BasePart") and (v.Name:lower():find("sensor") or v.Name:lower():find("frontdoor") or v.Name == "TouchPlate") then
+                            pcall(function()
+                                -- Teleporta você na velocidade da luz direto na hitbox da casa para acionar a sirene
+                                root.CFrame = v.CFrame
+                                task.wait(0.04) -- Delay preciso para o servidor registrar a presença física
+                                alarmesDisparados = alarmesDisparados + 1
+                            end)
+                        end
+                    end
                 end
             end
             
-            -- Devolve você para a sua posição original após o caos estar feito
+            -- Limpa suas forças cinéticas e te traz em segurança para onde você clicou no Hub
             root.Velocity = Vector3.zero
+            root.RotVelocity = Vector3.zero
+            task.wait(0.01)
             root.CFrame = originalCFrame
-            print("MagN Hub: Todos os alarmes das casas foram disparados!")
+            
+            print("MagN Hub: Sucesso! " .. alarmesDisparados .. " sensores residenciais foram acionados.")
         end)
     end
 })
@@ -2073,32 +2068,22 @@ House:AddToggle({
     Name = "Glitch Balada (Luzes Piscando)",
     Default = false,
     Callback = function(state)
-        if state then
-            if baladaConnection then baladaConnection:Disconnect() end
-            
-            -- Fica ligando e desligando os interruptores do lote de forma ultra veloz
+        _G.BaladaAtiva = state
+        if _G.BaladaAtiva then
             task.spawn(function()
-                _G.BaladaAtiva = true
                 local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
-                
                 while _G.BaladaAtiva do
-                    if remotes then
-                        pcall(function()
-                            -- Dispara os remotes de controle de energia mudando o estado rapidamente
-                            remotes:FindFirstChild("1Hous1eLigh1t"):FireServer("HouseLightToggle", true)
-                            task.wait(0.05)
-                            remotes:FindFirstChild("1Hous1eLigh1t"):FireServer("HouseLightToggle", false)
-                            task.wait(0.05)
-                        end)
+                    if remotes and remotes:FindFirstChild("1Hous1eLigh1t") then
+                        -- Loop seguro contra crash (envia os comandos com delay para o servidor respirar)
+                        pcall(function() remotes["1Hous1eLigh1t"]:FireServer("HouseLightToggle", true) end)
+                        task.wait(0.15)
+                        pcall(function() remotes["1Hous1eLigh1t"]:FireServer("HouseLightToggle", false) end)
+                        task.wait(0.15)
                     else
                         task.wait(0.5)
                     end
                 end
             end)
-            print("MagN Hub: Glitch Balada ativado.")
-        else
-            _G.BaladaAtiva = false
-            print("MagN Hub: Glitch Balada desativado.")
         end
     end
 })
@@ -2236,13 +2221,13 @@ local Avatar = Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://448334599
 local players = game:GetService("Players")
 local player = players.LocalPlayer
 local jogadorSelecionadoSkin = ""
-local dropdownAvatar = nil -- Armazena a referência para atualizações dinâmicas
+local dropdownAvatar = nil -- Armazena a referência para atualizar dinamicamente
 
--- Função interna para listar todos os jogadores do servidor atual
+-- Função interna que lista todos os jogadores reais do servidor (exceto você)
 local function ObterListaJogadores()
     local lista = {}
     for _, p in pairs(players:GetPlayers()) do
-        if p ~= player then -- Opcional: Remove você mesmo da lista para facilitar
+        if p ~= player then
             table.insert(lista, p.Name)
         end
     end
@@ -2250,90 +2235,56 @@ local function ObterListaJogadores()
 end
 
 -- =============================================================================
--- DROPDOWN DE SELEÇÃO DE JOGADOR
+-- DROPDOWN DE SELEÇÃO DE JOGADOR (ABA AVATAR)
 -- =============================================================================
 dropdownAvatar = Avatar:AddDropdown({
     Name = "Selecionar Alvo para Skin",
-    Options = ObterListaJogadores(), -- Inicializa com os jogadores presentes
+    Options = ObterListaJogadores(), -- Carrega com os jogadores atuais do mapa
     Callback = function(opcao)
         jogadorSelecionadoSkin = opcao
-        print("MagN Hub: Alvo de skin definido para: " .. jogadorSelecionadoSkin)
+        print("MagN Hub: Alvo definido para: " .. jogadorSelecionadoSkin)
     end
 })
 
--- Loops automáticos para atualizar a dropdown se alguém entrar ou sair do servidor
+-- Monitoramento automático: atualiza o menu se alguém entrar ou sair do servidor
 players.PlayerAdded:Connect(function()
-    task.wait(0.5) -- Pequena pausa para garantir o carregamento correto do nome
+    task.wait(0.5) -- Pequeno delay necessário para o Roblox ler o jogador novo por completo
     if dropdownAvatar and (dropdownAvatar.SetOptions or dropdownAvatar.Refresh) then
-        local atualizar = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
-        atualizar(dropdownAvatar, ObterListaJogadores())
+        local atualizarFuncao = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
+        atualizarFuncao(dropdownAvatar, ObterListaJogadores())
     end
 end)
 
 players.PlayerRemoving:Connect(function()
     task.wait(0.1)
     if dropdownAvatar and (dropdownAvatar.SetOptions or dropdownAvatar.Refresh) then
-        local atualizar = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
-        atualizar(dropdownAvatar, ObterListaJogadores())
+        local atualizarFuncao = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
+        atualizarFuncao(dropdownAvatar, ObterListaJogadores())
     end
 end)
 
--- =============================================================================
--- AVATAR COPIER - BOTÃO
--- =============================================================================
 Avatar:AddButton({
     Name = "Copiar Avatar do Alvo",
     Callback = function()
-        -- Puxa o jogador que foi selecionado estritamente nesta dropdown da aba
+        local players = game:GetService("Players")
+        -- Lê a variável da dropdown de alvos da sua aba de Avatar
         local target = players:FindFirstChild(jogadorSelecionadoSkin)
         
-        if not target or not target.Character then
-            warn("MagN Hub: Selecione um alvo válido na dropdown antes de copiar!")
-            return
+        if not target or not target.Character or not target.Character:FindFirstChildOfClass("Humanoid") then 
+            warn("MagN Hub: Selecione um alvo válido na Dropdown antes de copiar!")
+            return 
         end
         
-        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
-        if not remotes or not remotes:FindFirstChild("1Updat1eAvata1r") then
-            warn("MagN Hub: Evento de catálogo do Brookhaven não encontrado.")
-            return
-        end
-        
-        task.spawn(function()
-            local tChar = target.Character
-            
-            -- Copia roupas (Camisa e Calça)
-            local shirt = tChar:FindFirstChildOfClass("Shirt")
-            local pants = tChar:FindFirstChildOfClass("Pants")
-            
+        local localHum = players.LocalPlayer.Character and players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if localHum then
             pcall(function()
-                if shirt and shirt.ShirtTemplate then
-                    remotes["1Updat1eAvata1r"]:FireServer("WearShirt", shirt.ShirtTemplate)
-                    task.wait(0.05)
-                end
-                if pants and pants.PantsTemplate then
-                    remotes["1Updat1eAvata1r"]:FireServer("WearPants", pants.PantsTemplate)
-                    task.wait(0.05)
-                end
+                -- Pega as informações completas de roupas e acessórios registradas no banco de dados do Roblox do alvo
+                local desc = players:GetHumanoidDescriptionFromUserId(target.UserId)
+                -- Aplica diretamente no seu personagem de forma limpa e sem bugs
+                localHum:ApplyDescription(desc)
+                print("MagN Hub: Skin copiada com sucesso!")
             end)
-            
-            -- Varre e copia todos os acessórios (Cabelos, Chapéus, Costas, etc)
-            for _, v in pairs(tChar:GetChildren()) do
-                if v:IsA("Accessory") then
-                    local handle = v:FindFirstChild("Handle")
-                    if handle then
-                        local specialMesh = handle:FindFirstChildOfClass("SpecialMesh")
-                        if specialMesh and specialMesh.MeshId then
-                            pcall(function()
-                                remotes["1Updat1eAvata1r"]:FireServer("WearAccessory", specialMesh.MeshId)
-                            end)
-                            task.wait(0.02)
-                        end
-                    end
-                end
-            end
-            
-            print("MagN Hub: Avatar do alvo copiado com sucesso!")
-        end)
+        end
     end
 })
 
