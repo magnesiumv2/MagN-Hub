@@ -1850,6 +1850,23 @@ Anti:AddToggle({
     end
 })
 
+Anti:AddToggle({
+   Name = "Anti Void",
+   Default = false,
+   Callback = function(state)
+        if state then
+            -- Altera a altura de destruição para um valor absurdamente baixo.
+            -- Isso impede que o motor do Roblox delete seu personagem ou suas ferramentas ao cair abaixo do mapa.
+            workspace.FallenPartsDestroyHeight = -999999
+            print("MagN Hub: Anti-Void ativado.")
+        else
+            -- Restaura a altura padrão do motor físico do Roblox (geralmente -500)
+            workspace.FallenPartsDestroyHeight = -500
+            print("MagN Hub: Anti-Void desativado.")
+        end
+   end
+})
+
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://113213458632705"
 wait(0.5)
 game:GetService("Players").LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Seated, true)
