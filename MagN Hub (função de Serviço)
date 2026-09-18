@@ -927,6 +927,93 @@ Troll:AddToggle({
     end
 })
 
+Troll:AddToggle({
+    Name = "Couch Void Trap",
+    Default = false,
+    Callback = function(state)
+        voidTrapActive = state
+        
+        if state then
+            task.spawn(function()
+                while voidTrapActive do
+                    if selectedPlayerName then
+                        local target = Players:FindFirstChild(selectedPlayerName)
+                        
+                        -- Verifica se o alvo é válido e está vivo
+                        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                            local tHum = target.Character:FindFirstChildOfClass("Humanoid")
+                            local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                            
+                            -- Só inicia se o alvo ainda NÃO estiver sentado
+                            if not tHum.Sit then
+                                local char = LocalPlayer.Character
+                                
+                                if char and tRoot then
+                                    -- 1. Limpa e pega o Sofá
+                                    local argsClean = {"ClearAllTools"}
+                                    game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
+                                    task.wait(0.05)
+
+                                    local argsGet = {
+                                        [1] = "PickingTools",
+                                        [2] = "Couch"
+                                    }
+                                    game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
+                                    task.wait(0.05)
+
+                                    local tool = LocalPlayer.Backpack:FindFirstChild("Couch")
+                                    if tool then
+                                        tool.Parent = char
+                                    end
+                                    task.wait(0.05)
+
+                                    -- 2. Solta o sofá da mão do LocalPlayer
+                                    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+                                    if rightHand then
+                                        local grip = rightHand:FindFirstChild("RightGrip")
+                                        if grip then grip:Destroy() end
+                                    end
+
+                                    local handle = tool:FindFirstChild("Handle")
+                                    if handle then
+                                        handle.CanCollide = false
+                                        
+                                        -- 3. Loop: Mantém o sofá nas pernas do alvo até ele sentar
+                                        while voidTrapActive and tHum and tHum.Health > 0 and not tHum.Sit do
+                                            -- Tenta posicionar levemente abaixo do RootPart (onde ficam as pernas)
+                                            handle.CFrame = tRoot.CFrame * CFrame.new(0, -2, 0)
+                                            task.wait()
+                                        end
+
+                                        -- 4. O alvo sentou! Teleporta o sofá para milímetros acima do limite de destruição do Void
+                                        if tHum.Sit then
+                                            -- Define uma altura segura logo acima de onde as partes são deletadas automaticamente
+                                            local voidY = workspace.FallenPartsDestroyHeight + 15
+                                            handle.CFrame = CFrame.new(tRoot.Position.X, voidY, tRoot.Position.Z)
+                                            
+                                            -- Espera um instante para o jogo processar a queda do alvo junto com o sofá
+                                            task.wait(0.1)
+                                            
+                                            -- 5. Deleta o sofá (tirando da mochila/personagem) deixando o alvo cair livremente no void
+                                            tool:Destroy()
+                                            
+                                            -- Limpa o servidor por segurança externa
+                                            game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
+                                        end
+                                    end
+
+                                end
+                            end
+                        end
+                    end
+                    task.wait(0.3) -- Pausa rápida antes de checar o alvo novamente
+                end
+            end)
+        else
+            voidTrapActive = false
+        end
+    end
+})
 
 local function FlingBall(target)
 
@@ -1004,53 +1091,6 @@ Troll:AddButton({
     Callback = function()
         FlingBall(game:GetService("Players")[selectedPlayerName])
     end
-})
-
-Troll:AddSection({"Internet Error/Lag Server"})
-
-Troll:AddButton({ 
-    Name = "Overflow Server/Lag Internet Error Kick",
-    Callback = function() 
-        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
-        local backpack = LocalPlayer:WaitForChild("Backpack") 
-        local remoteStorage = ReplicatedStorage:WaitForChild("RE") 
-        local toolRemote = remoteStorage:FindFirstChild("1Too1l") 
-        
-        if toolRemote and toolRemote:IsA("RemoteFunction") then 
-            local args1 = { "PickingTools" , "FireHose" } 
-            local args2 = { "FireHose" , "DestroyFireHose" } 
-            
-            for i = 1, 30 do 
-                task.spawn(function() 
-                    -- Aumentado para 289 requisições por ciclo
-                    for m = 1, 289 do 
-                        pcall(function() 
-                            toolRemote:InvokeServer(unpack(args1)) 
-                        end) 
-                        
-                        -- Alterado para 40 para suavizar as 39 requisições restantes do final
-                        if m % 40 == 0 then 
-                            task.wait() 
-                        end 
-                    end 
-                    
-                    task.spawn(function() 
-                        local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose") 
-                        if fireHose then 
-                            local toolSound = fireHose:FindFirstChild("ToolSound") 
-                            if toolSound then 
-                                pcall(function() 
-                                    toolSound:FireServer(unpack(args2)) 
-                                end) 
-                            end 
-                        end 
-                    end) 
-                end) 
-                -- Pequena pausa entre os ciclos principais para estabilizar o FPS do cliente
-                task.wait(0.05) 
-            end 
-        end 
-    end 
 })
 
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
