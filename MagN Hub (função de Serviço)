@@ -1209,7 +1209,179 @@ local function ExecuteFlingBoat(target, originalCFrame)
     if hum then workspace.CurrentCamera.CameraSubject = hum end
 end
 
+local function ExecuteBringCouch(target)
+    local players = game:GetService("Players")
+    local player = players.LocalPlayer
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not root or not target or not target.Character then 
+        warn("MagN Hub: Alvo inválido!")
+        return 
+    end
+
+    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    local tHum = target.Character:FindFirstChildOfClass("Humanoid")
+    if not tRoot or not tHum then return end
+
+    -- [TRAVA INICIAL]: Se o alvo já estiver sentado, cancela imediatamente
+    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
+        warn("MagN Hub: O alvo já está sentado. Ação cancelada.")
+        return
+    end
+
+    task.spawn(function()
+        -- Encontra um sofá disponível no mapa
+        local couchSeat = nil
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Seat") and (obj.Name:lower():find("couch") or obj.Name:lower():find("sofa")) then
+                if not obj.Occupant then
+                    couchSeat = obj
+                    break
+                end
+            end
+        end
+
+        if not couchSeat then return end
+
+        local tentativas = 0
+        -- Persegue o alvo em pé. Se ele sentar em algo no caminho, o loop quebra
+        while couchSeat.Occupant == nil and tentativas < 15 and target.Character and tRoot:IsDescendantOf(workspace) do
+            -- [TRAVA DE PERSEGUIÇÃO]: Se ele sentar em algo enquanto o couch tenta pegá-lo, cancela tudo
+            if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
+                break
+            end
+            
+            couchSeat.CFrame = tRoot.CFrame * CFrame.new(0, -0.5, 0)
+            tentativas = tentativas + 1
+            task.wait(0.02)
+        end
+
+        task.wait(0.05)
+
+        -- Só executa a força se quem sentou no sofá foi estritamente o nosso alvo
+        if couchSeat.Occupant and couchSeat.Occupant.Parent == target.Character then
+            pcall(function()
+                local bv = couchSeat:FindFirstChild("CouchForce") or Instance.new("BodyVelocity")
+                bv.Name = "CouchForce"
+                bv.Velocity = Vector3.new(0, 5, 0)
+                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bv.Parent = couchSeat
+
+                local bav = couchSeat:FindFirstChild("CouchRot") or Instance.new("BodyAngularVelocity")
+                bav.Name = "CouchRot"
+                bav.AngularVelocity = Vector3.new(0, 50, 0)
+                bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                bav.Parent = couchSeat
+
+                task.wait(0.05)
+
+                couchSeat.CFrame = root.CFrame * CFrame.new(0, 2, -5)
+                
+                task.wait(0.4)
+                bv:Destroy()
+                bav:Destroy()
+            end)
+        else
+            -- Limpa a velocidade caso tenha sido cancelado no meio do caminho
+            couchSeat.Velocity = Vector3.zero
+            couchSeat.RotVelocity = Vector3.zero
+        end
+    end)
+end
+
+local function ExecuteKillCouch(target)
+    local players = game:GetService("Players")
+    local player = players.LocalPlayer
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not root or not target or not target.Character then 
+        warn("MagN Hub: Alvo inválido!")
+        return 
+    end
+
+    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    local tHum = target.Character:FindFirstChildOfClass("Humanoid")
+    if not tRoot or not tHum then return end
+
+    -- [TRAVA INICIAL]: Se o alvo já estiver sentado, cancela imediatamente
+    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
+        warn("MagN Hub: O alvo já está sentado. Ação cancelada.")
+        return
+    end
+
+    task.spawn(function()
+        local originalCFrame = root.CFrame
+
+        -- Encontra um sofá disponível no mapa
+        local couchSeat = nil
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Seat") and (obj.Name:lower():find("couch") or obj.Name:lower():find("sofa")) then
+                if not obj.Occupant then
+                    couchSeat = obj
+                    break
+                end
+            end
+        end
+
+        if not couchSeat then return end
+
+        local tentativas = 0
+        -- Persegue o alvo em pé. Se ele sentar em algo no caminho, o loop quebra
+        while couchSeat.Occupant == nil and tentativas < 15 and target.Character and tRoot:IsDescendantOf(workspace) do
+            -- [TRAVA DE PERSEGUIÇÃO]: Se ele sentar em algo enquanto o couch tenta pegá-lo, cancela tudo
+            if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
+                break
+            end
+            
+            couchSeat.CFrame = tRoot.CFrame * CFrame.new(0, -0.5, 0)
+            tentativas = tentativas + 1
+            task.wait(0.02)
+        end
+
+        task.wait(0.05)
+
+        -- Só envia para o void se o alvo foi capturado com sucesso no sofá
+        if couchSeat.Occupant and couchSeat.Occupant.Parent == target.Character then
+            pcall(function()
+                local bv = Instance.new("BodyVelocity")
+                bv.Velocity = Vector3.new(9e7, -9e7, 9e7)
+                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bv.Parent = couchSeat
+
+                local bav = Instance.new("BodyAngularVelocity")
+                bav.AngularVelocity = Vector3.new(9e7, 9e7, 9e7)
+                bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                bav.Parent = couchSeat
+
+                task.wait(0.05)
+
+                -- Teleporta ambos para a borda superior do Void
+                local voidCFrame = CFrame.new(couchSeat.Position.X, -450, couchSeat.Position.Z)
+                root.CFrame = voidCFrame
+                couchSeat.CFrame = voidCFrame
+
+                task.wait(0.4) -- Tempo para processar a queda física
+
+                -- Destrói as forças e retorna seu personagem em segurança
+                bv:Destroy()
+                bav:Destroy()
+                root.Velocity = Vector3.zero
+                root.RotVelocity = Vector3.zero
+                root.CFrame = originalCFrame
+            end)
+        else
+            -- Reseta o sofá caso a captura tenha sido cancelada
+            couchSeat.Velocity = Vector3.zero
+            couchSeat.RotVelocity = Vector3.zero
+        end
+    end)
+end
+
 -- ==================== ELEMENTOS DA SUA INTERFACE (GUI) ====================
+
+Troll:AddSection({"Metodos"})
 
 -- 1. Dropdown para escolher qual método usar
 Troll:AddDropdown({
@@ -1219,6 +1391,34 @@ Troll:AddDropdown({
     Callback = function(selectedOption)
         currentMethod = selectedOption
     end
+})
+
+Troll:AddSection({"Troll"})
+
+Troll:AddButton({
+   Name = "Kill",
+   Callback = function()
+task.spawn(function()
+                while flingActive do
+                    if selectedPlayerName then
+                        local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
+                        
+                        if target then
+                            -- Verifica qual método está selecionado na dropdown e executa
+                            if currentMethod == "Ball" then
+                                Warn("Método não compatível com esta função")
+                            elseif currentMethod == "Couch" then
+                                ExecuteKillCouch(target)
+                            elseif currentMethod == "Boat" then
+                                Print("Em breve o método será compatível com esta função")
+                            end
+                        end
+                    end
+                 end
+             end
+         end
+    end
+end
 })
 
 -- 2. Toggle Unificado que liga e desliga o método escolhido na Dropdown
