@@ -1261,6 +1261,122 @@ Troll:AddToggle({
     end
 })
 
+Troll:AddSection({"Métodos Click e Colisão"})
+local RunService = game:GetService("RunService")
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local portaConnection = nil -- Mantém a conexão salva na memória externa do callback
+
+Troll:AddToggle({
+   Name = "Fling Portas Colisão",
+   Default = false, -- Altere para true se quiser que inicie ligado
+   Callback = function(state)
+        if state then
+            -- Evita duplicar o loop caso clique muito rápido
+            if portaConnection then portaConnection:Disconnect() end
+            
+            -- Inicia o loop puxando e girando as portas no seu personagem
+            portaConnection = RunService.Heartbeat:Connect(function()
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if not root then return end
+                
+                -- Procura por todas as portas no mapa do Brookhaven
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("BasePart") and (v.Name:lower():find("door") or v.Name:lower():find("porta")) then
+                        pcall(function()
+                            v.CanCollide = true
+                            
+                            -- Gruda as portas exatamente na sua posição atual
+                            v.CFrame = root.CFrame * CFrame.new(0, 0, 0)
+                            
+                            -- Injeta a força linear e rotacional massiva nelas
+                            v.Velocity = Vector3.new(9e7, 9e7, 9e7)
+                            v.RotVelocity = Vector3.new(9e7, 9e7, 9e7)
+                        end)
+                    end
+                end
+            end)
+        else
+            -- Quando desligar o toggle, mata o loop instantaneamente
+            if portaConnection then
+                portaConnection:Disconnect()
+                portaConnection = nil
+            end
+            
+            -- Freia as portas para que elas não fiquem voando pelo mapa
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") and (v.Name:lower():find("door") or v.Name:lower():find("porta")) then
+                    pcall(function()
+                        v.Velocity = Vector3.zero
+                        v.RotVelocity = Vector3.zero
+                    end)
+                end
+            end
+        end
+   end
+})
+
+local RunService = game:GetService("RunService")
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local flingBallConnection = nil
+local flingBallPart = nil
+
+Troll:AddToggle({
+   Name = "Fling Ball Colisão",
+   Default = false,
+   Callback = function(state)
+        if state then
+            -- Garante que não haja duplicidade limpando execuções anteriores
+            if flingBallConnection then flingBallConnection:Disconnect() end
+            if flingBallPart then pcall(function() flingBallPart:Destroy() end) end
+            
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            -- Cria a esfera invisível que servirá de escudo/hitbox de colisão
+            flingBallPart = Instance.new("Part")
+            flingBallPart.Name = "MagNFlingBall"
+            flingBallPart.Shape = Enum.PartType.Ball
+            flingBallPart.Size = Vector3.new(5, 5, 5) -- Tamanho do raio do Fling (pode aumentar se quiser pegar de mais longe)
+            flingBallPart.Transparency = 1 -- 1 para invisível, 0.5 se quiser ver a bola ao redor de você para testar
+            flingBallPart.CanCollide = true
+            flingBallPart.Massless = true -- Impede que o peso da bola puxe seu personagem para baixo
+            flingBallPart.Parent = char
+            
+            -- Cria um anexo de solda para prender a bola perfeitamente no seu centro
+            local weld = Instance.new("Weld")
+            weld.Part0 = root
+            weld.Part1 = flingBallPart
+            weld.C0 = CFrame.new(0, 0, 0)
+            weld.Parent = flingBallPart
+            
+            -- Loop de física para manter a força da bola atualizada em tempo real
+            flingBallConnection = RunService.Heartbeat:Connect(function()
+                if flingBallPart and flingBallPart:IsDescendantOf(workspace) then
+                    -- Injeta a velocidade rotacional e linear massiva na bola
+                    -- Quando a caixa de colisão do avatar de outro jogador encostar aqui, o Roblox calcula o impacto e joga ele longe
+                    flingBallPart.Velocity = Vector3.new(9e7, 9e7, 9e7)
+                    flingBallPart.RotVelocity = Vector3.new(9e7, 9e7, 9e7)
+                end
+            end)
+        else
+            -- Quando desligar o Toggle, limpa o loop e remove a bola do mapa imediatamente
+            if flingBallConnection then
+                flingBallConnection:Disconnect()
+                flingBallConnection = nil
+            end
+            
+            if flingBallPart then
+                pcall(function() flingBallPart:Destroy() end)
+                flingBallPart = nil
+            end
+        end
+   end
+})
+
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
 Anti:AddToggle({
    Name = "Anti Sit",
