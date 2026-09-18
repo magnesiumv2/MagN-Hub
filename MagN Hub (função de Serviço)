@@ -872,7 +872,7 @@ local function ExecuteFlingBall(target)
     end
 end
 
--- --- MÉTODO 2: FLING COUCH (Sua lógica exata com força na Handle e teleporte livre) ---
+-- --- MÉTODO 2: FLING COUCH (Força no sofá, sem soltar da mão, puxando o personagem junto) ---
 local function ExecuteFlingCouch(target)
     local players = game:GetService("Players")
     local player = players.LocalPlayer
@@ -909,29 +909,26 @@ local function ExecuteFlingCouch(target)
 
                 workspace.FallenPartsDestroyHeight = -999999
 
-                -- 3. SOLTA O SOFÁ DA MÃO DO PERSONAGEM REAL
-                -- Removemos o RightGrip (a solda que o Roblox cria automaticamente na mão)
-                local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-                if rightHand then
-                    local grip = rightHand:FindFirstChild("RightGrip")
-                    if grip then grip:Destroy() end
+                local handle = tool:FindFirstChild("Handle")
+                if handle and handle:FindFirstChild("FlingForce") then
+                    handle.FlingForce:Destroy()
                 end
 
-                local handle = tool:FindFirstChild("Handle")
+                -- 3. CRIA A FORÇA DIRETAMENTE NA HANDLE DO COUCH (Sem remover o RightGrip)
                 local bv = nil
-                
                 if handle then
-                    -- Remove colisões com você mesmo para não te dar "fling"
                     handle.CanCollide = false
-                    
-                    -- Cria as forças absurdas DIRETAMENTE na Handle do sofá
                     bv = Instance.new("BodyVelocity")
                     bv.Name = "FlingForce"
-                    bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                    bv.Velocity = Vector3.new(9e8, 9e8, 9e8) -- Força na Handle
                     bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                    bv.Parent = handle
+                    bv.Parent = handle -- O pai é o Sofá!
                 end
                 
+                -- Configurações para seu corpo aguentar o tranco sem bugar sentado no próprio sofá
+                hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                hum.PlatformStand = false
+
                 -- Foca a câmera no alvo para você assistir
                 cam.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
                 task.wait(0.001)
@@ -943,7 +940,7 @@ local function ExecuteFlingCouch(target)
                 vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
 
                 local angle = 0
-                -- Loop interno do ataque (Move apenas o sofá até o alvo)
+                -- Loop interno do ataque (Move apenas o sofá, mas a mão presa traz seu corpo junto)
                 while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and handle and handle:IsDescendantOf(workspace) do
                     local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
                     if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
@@ -960,14 +957,17 @@ local function ExecuteFlingCouch(target)
                     -- A Handle do Sofá é teleportada e girada na HumanoidRootPart do inimigo
                     handle.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
 
+                    -- Forças físicas injetadas unicamente na Handle
                     handle.Velocity = Vector3.new(9e8, 9e8, 9e8)
                     handle.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
                     task.wait()
                 end
                 
-                -- --- LIMPEZA APÓS O ATAQUE ---
+                -- --- LIMPEZA APÓS O ATAQUE DA VEZ ENTRAR EM BREAK ---
                 if bv then bv:Destroy() end
                 if hum then
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                    hum.PlatformStand = false
                     hum:UnequipTools()
                 end
                 
