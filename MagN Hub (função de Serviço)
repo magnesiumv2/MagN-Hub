@@ -1396,49 +1396,53 @@ Troll:AddDropdown({
 Troll:AddSection({"Troll"})
 
 Troll:AddButton({
-   Name = "Kill",
-   Callback = function()
-task.spawn(function()
-                    if selectedPlayerName then
-                        local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
-                        
-                        if target then
-                            -- Verifica qual método está selecionado na dropdown e executa
-                            if currentMethod == "Ball" then
-                                Warn("Método não compatível com esta função")
-                            elseif currentMethod == "Couch" then
-                                ExecuteKillCouch(target)
-                            elseif currentMethod == "Boat" then
-                                Print("Em breve o método será compatível com esta função")
-                            end
-                        end
-                    end
-                 end
-             end
-         end
+    Name = "Kill",
+    Callback = function()
+        if selectedPlayerName then
+            local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
+            
+            if target then
+                -- Verifica qual método está selecionado na dropdown e executa
+                if currentMethod == "Ball" then
+                    warn("MagN Hub: Método não compatível com esta função!")
+                elseif currentMethod == "Couch" then
+                    -- Executa a sua função de eliminação pelo sofá
+                    ExecuteKillCouch(target)
+                elseif currentMethod == "Boat" then
+                    print("MagN Hub: Em breve este método será compatível com esta função.")
+                end
+            else
+                warn("MagN Hub: O jogador selecionado não foi encontrado no servidor.")
+            end
+        else
+            warn("MagN Hub: Nenhum jogador foi selecionado na Dropdown de alvos!")
+        end
     end
-end
 })
 
 Troll:AddButton({
-   Name = "Bring",
-   Callback = function()
-task.spawn(function()
-                    if selectedPlayerName then
-                        local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
-                        
-                        if target then
-                            -- Verifica qual método está selecionado na dropdown e executa
-                            if currentMethod == "Ball" then
-                                ExecuteFlingBall(target)
-                            elseif currentMethod == "Couch" then
-                                ExecuteFlingCouch(target)
-                            elseif currentMethod == "Boat" then
-                                ExecuteFlingBoat(target)
-                            end
-                        end
-                    end
-end
+    Name = "Bring",
+    Callback = function()
+        if selectedPlayerName then
+            local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
+            
+            if target then
+                -- Verifica qual método está selecionado na dropdown e executa
+                if currentMethod == "Ball" then
+                    warn("MagN Hub: Método não compatível com esta função!")
+                elseif currentMethod == "Couch" then
+                    -- Executa a sua função de trazer pelo sofá
+                    ExecuteBringCouch(target)
+                elseif currentMethod == "Boat" then
+                    print("MagN Hub: Em breve este método será compatível com esta função.")
+                end
+            else
+                warn("MagN Hub: O jogador selecionado não foi encontrado no servidor.")
+            end
+        else
+            warn("MagN Hub: Nenhum jogador foi selecionado na Dropdown de alvos!")
+        end
+    end
 })
 
 -- 2. Toggle Unificado que liga e desliga o método escolhido na Dropdown
