@@ -1906,6 +1906,10 @@ Car:AddButton({
     end
 })
 
+local Lag = Window:MakeTab({ Title = "Ferramentas", Icon = "rbxassetid://4483345998" })
+
+
+
 local House = Window:MakeTab({ Title = "Casas", Icon = "home" })
 
 local RunService = game:GetService("RunService")
@@ -2218,71 +2222,54 @@ House:AddToggle({
 
 local Avatar = Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://4483345998" })
 
-local players = game:GetService("Players")
-local player = players.LocalPlayer
-local jogadorSelecionadoSkin = ""
-local dropdownAvatar = nil -- Armazena a referência para atualizar dinamicamente
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
--- Função interna que lista todos os jogadores reais do servidor (exceto você)
-local function ObterListaJogadores()
-    local lista = {}
-    for _, p in pairs(players:GetPlayers()) do
-        if p ~= player then
-            table.insert(lista, p.Name)
-        end
-    end
-    return lista
-end
+local LocalPlayer = Players.LocalPlayer
 
--- =============================================================================
--- DROPDOWN DE SELEÇÃO DE JOGADOR (ABA AVATAR)
--- =============================================================================
-dropdownAvatar = Avatar:AddDropdown({
-    Name = "Selecionar Alvo para Skin",
-    Options = ObterListaJogadores(), -- Carrega com os jogadores atuais do mapa
-    Callback = function(opcao)
-        jogadorSelecionadoSkin = opcao
-        print("MagN Hub: Alvo definido para: " .. jogadorSelecionadoSkin)
-    end
-})
+-- Variável para ligar e desligar o loop do celular
+local spamCelularAtivo = false
 
--- Monitoramento automático: atualiza o menu se alguém entrar ou sair do servidor
-players.PlayerAdded:Connect(function()
-    task.wait(0.5) -- Pequeno delay necessário para o Roblox ler o jogador novo por completo
-    if dropdownAvatar and (dropdownAvatar.SetOptions or dropdownAvatar.Refresh) then
-        local atualizarFuncao = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
-        atualizarFuncao(dropdownAvatar, ObterListaJogadores())
-    end
-end)
-
-players.PlayerRemoving:Connect(function()
-    task.wait(0.1)
-    if dropdownAvatar and (dropdownAvatar.SetOptions or dropdownAvatar.Refresh) then
-        local atualizarFuncao = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
-        atualizarFuncao(dropdownAvatar, ObterListaJogadores())
-    end
-end)
-
-Avatar:AddButton({
-    Name = "Copiar Avatar do Alvo",
-    Callback = function()
-        local players = game:GetService("Players")
-        -- Lê a variável da dropdown de alvos da sua aba de Avatar
-        local target = players:FindFirstChild(jogadorSelecionadoSkin)
+-- Altere "Avatar" ou "House" para a seção onde você deseja colocar este Toggle
+Avatar:AddToggle({
+    Name = "Spam ClickDetector (Celular PropMaker)",
+    Default = false,
+    Callback = function(v)
+        spamCelularAtivo = v
         
-        if not target or not target.Character or not target.Character:FindFirstChildOfClass("Humanoid") then 
-            warn("MagN Hub: Selecione um alvo válido na Dropdown antes de copiar!")
-            return 
-        end
-        
-        local localHum = players.LocalPlayer.Character and players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if localHum then
-            pcall(function()
-                -- Pega as informações completas de roupas e acessórios registradas no banco de dados do Roblox do alvo
-                local desc = players:GetHumanoidDescriptionFromUserId(target.UserId)
-                -- Aplica diretamente no seu personagem de forma limpa e sem bugs
-                localHum:ApplyDescription(desc)
-                print("MagN Hub: Skin copiada com sucesso!")
+        if spamCelularAtivo then
+            -- 1. Pega a ferramenta PropMaker no Brookhaven usando o evento de ferramentas do jogo
+            local ToolEvent = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Too1l")
+            if ToolEvent then
+                ToolEvent:InvokeServer("PickingTools", "PropMaker")
+            end
+            
+            -- Aguarda um instante para o jogador selecionar e colocar o celular no chão manualmente
+            -- (O script ficará rastreando o mapa até encontrar o celular colocado por você)
+            task.spawn(function()
+                while spamCelularAtivo do
+                    -- Procura de forma recursiva o objeto do Celular gerado no Workspace pelo PropMaker
+                    -- Dica: Mude o nome "Celular" ou "Phone" de acordo com o nome exato do item no menu do PropMaker
+                    local celular = Workspace:FindFirstChild("Phone", true) or Workspace:FindFirstChild("Celular", true)
+                    
+                    if celular then
+                        -- Localiza o ClickDetector dentro do modelo do celular
+                        local clickDetector = celular:FindFirstChildOfClass("ClickDetector")
+                        
+                        if clickDetector then
+                            -- Dispara o click em lotes de 30 para estressar o detector sem travar o seu próprio jogo
+                            for i = 1, 30 do
+                                if not spamCelularAtivo then break end
+                                fireclickdetector(clickDetector)
+                            end
+                        end
+                    end
+                    
+                    -- Sincroniza o loop com a taxa de quadros física do Roblox para evitar crash local
+                    RunService.Heartbeat:Wait()
+                end
             end)
         end
     end
