@@ -1721,6 +1721,649 @@ Troll:AddToggle({
    end
 })
 
+local Car = Window:MakeTab({ Title = "Carro", Icon = "rbxassetid://4483345998" })
+
+Car:AddSection({"Velocidade do Carro"})
+
+local velocidadeCarroSelecionada = 0 -- Variável que vai guardar o número digitado na Textbox
+
+-- 1. Criação da TextBox na sua aba Car
+Car:AddTextBox({
+    Name = "Velocidade do Carro",
+    Default = "100",
+    Callback = function(texto)
+        -- Converte o texto digitado em número de forma segura
+        velocidadeCarroSelecionada = tonumber(texto) or 0
+    end
+})
+
+-- 2. Criação do Botão para aplicar a velocidade na sua aba Car
+Car:AddButton({
+    Name = "Aplicar Velocidade",
+    Callback = function()
+        local player = game:GetService("Players").LocalPlayer
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        
+        -- Verifica se o jogador está sentado no banco do motorista
+        if hum and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
+            local seat = hum.SeatPart
+            
+            -- Altera a velocidade máxima nativa do assento do carro
+            seat.MaxSpeed = velocidadeCarroSelecionada
+            
+            -- Remove o limite de força da mola física do veículo para correr de verdade
+            if seat:FindFirstChildOfClass("LinearVelocity") then
+                seat:FindFirstChildOfClass("LinearVelocity").MaxForce = math.huge
+            end
+            
+            print("MagN Hub: Velocidade do veículo modificada para: " .. velocidadeCarroSelecionada)
+        else
+            -- Aviso caso o usuário clique no botão estando a pé
+            warn("MagN Hub: Você precisa estar sentado no banco do motorista de um carro!")
+        end
+    end
+})
+
+Car:AddSection({"Remover Veículo"})
+
+local vehiclesFolder = workspace:FindFirstChild("Vehicles")
+local veiculoSelecionadoParaRemover = ""
+local meuDropdown = nil -- Guardará a referência do componente para atualizar
+
+-- Função interna para escanear a pasta e coletar os nomes dos carros atuais
+local function ObterListaDeCarros()
+    local lista = {}
+    if vehiclesFolder then
+        for _, vehicle in pairs(vehiclesFolder:GetChildren()) do
+            table.insert(lista, vehicle.Name)
+        end
+    end
+    return lista
+end
+
+-- 1. Criação da Dropdown (salvando na variável 'meuDropdown')
+meuDropdown = Car:AddDropdown({
+    Name = "Selecionar Carro para Remover",
+    Options = ObterListaDeCarros(), -- Carrega com os carros que já estão no servidor
+    Callback = function(opcao)
+        veiculoSelecionadoParaRemover = opcao
+    end
+})
+
+-- 2. Sistema Automático de Escuta (Ouvindo o Workspace em tempo real)
+if vehiclesFolder then
+    -- Sempre que um carro NOVO aparecer no Brookhaven
+    vehiclesFolder.ChildAdded:Connect(function()
+        task.wait(0.1) -- Pequeno delay para o nome do carro carregar completamente
+        if meuDropdown and (meuDropdown.SetOptions or meuDropdown.Refresh) then
+            local atualizarFuncao = meuDropdown.SetOptions or meuDropdown.Refresh
+            atualizarFuncao(meuDropdown, ObterListaDeCarros())
+        end
+    end)
+
+    -- Sempre que um carro SUMIR ou for deletado no Brookhaven
+    vehiclesFolder.ChildRemoved:Connect(function()
+        task.wait(0.1)
+        if meuDropdown and (meuDropdown.SetOptions or meuDropdown.Refresh) then
+            local atualizarFuncao = meuDropdown.SetOptions or meuDropdown.Refresh
+            atualizarFuncao(meuDropdown, ObterListaDeCarros())
+        end
+    end)
+end
+
+-- 3. Botão para remover o carro que o usuário escolheu na lista dinâmica
+Car:AddButton({
+    Name = "Remover Carro Selecionado",
+    Callback = function()
+        if veiculoSelecionadoParaRemover == "" then
+            warn("MagN Hub: Escolha um veículo na lista automática primeiro!")
+            return
+        end
+        
+        if vehiclesFolder then
+            local carroAlvo = vehiclesFolder:FindFirstChild(veiculoSelecionadoParaRemover)
+            if carroAlvo then
+                pcall(function()
+                    carroAlvo:Destroy() -- Some da sua tela localmente
+                end)
+                print("MagN Hub: Veículo desfeito: " .. veiculoSelecionadoParaRemover)
+                veiculoSelecionadoParaRemover = "" -- Reseta a escolha
+            else
+                warn("MagN Hub: Este veículo já desapareceu do mapa.")
+            end
+        end
+    end
+})
+
+Car:AddButton({
+    Name = "Jogar Todos os Carros Vazios no Void",
+    Callback = function()
+        local players = game:GetService("Players")
+        local player = players.LocalPlayer
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        
+        if not root or not hum then return end
+        
+        local vehiclesFolder = workspace:FindFirstChild("Vehicles")
+        if not vehiclesFolder or #vehiclesFolder:GetChildren() == 0 then
+            warn("MagN Hub: Nenhum veículo encontrado no mapa para descartar!")
+            return
+        end
+
+        task.spawn(function()
+            -- 1. Salva a posição inicial de onde você clicou no botão do Hub
+            local originalCFrame = root.CFrame
+            
+            -- Desativa o limite do Void temporariamente para os carros não sumirem antes de você pular de cada um
+            local oldVoidHeight = workspace.FallenPartsDestroyHeight
+            workspace.FallenPartsDestroyHeight = -999999
+            
+            -- Reativa a capacidade de seu humanoid se sentar
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            hum.PlatformStand = false
+            
+            -- 2. Inicia o loop varrendo todos os veículos do Brookhaven
+            for _, carroModelo in pairs(vehiclesFolder:GetChildren()) do
+                if carroModelo and carroModelo:IsDescendantOf(workspace) then
+                    local driveSeat = carroModelo:FindFirstChild("VehicleSeat") or carroModelo:FindFirstChildOfClass("VehicleSeat")
+                    
+                    -- Condição: Só executa se o banco do motorista estiver TOTALMENTE VAZIO
+                    if driveSeat and driveSeat.Occupant == nil then
+                        pcall(function()
+                            -- Teleporta você para cima do assento e força a entrada
+                            root.CFrame = driveSeat.CFrame * CFrame.new(0, 0.5, 0)
+                            driveSeat:Sit(hum)
+                            
+                            -- Aguarda a sincronização da propriedade física de rede (Network Ownership)
+                            task.wait(0.15) 
+                            
+                            -- Joga o assento (e o carro inteiro) nas profundezas do Void (-450)
+                            driveSeat.CFrame = CFrame.new(driveSeat.Position.X, -450, driveSeat.Position.Z)
+                            task.wait(0.08)
+                            
+                            -- Força você a pular para se desvincular do carro descartado
+                            hum.PlatformStand = false
+                            hum:JumpAtCharacterHierarchy()
+                            
+                            -- Zera suas forças cinéticas para você não acumular velocidade na queda
+                            root.Velocity = Vector3.zero
+                            root.RotVelocity = Vector3.zero
+                            task.wait(0.02)
+                        end)
+                    end
+                end
+            end
+            
+            -- 3. Restaura as configurações originais do mapa
+            workspace.FallenPartsDestroyHeight = oldVoidHeight
+            
+            -- 4. Teleporta você de volta exatamente para onde o botão foi clicado
+            root.Velocity = Vector3.zero
+            root.RotVelocity = Vector3.zero
+            task.wait(0.01)
+            root.CFrame = originalCFrame
+            
+            -- Mensagem exata solicitada impressa no console do exploit
+            print("todos os carros foram removidos")
+        end)
+    end
+})
+
+local House Window:MakeTab({ Title = "Casas", Icon = "home" })
+
+local RunService = game:GetService("RunService")
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+
+-- Variáveis de controle de memória interna para os loops
+local antiBanConnection = nil
+local baladaConnection = nil
+
+-- =============================================================================
+-- 1. INVASOR DE CASAS (ANTI-BAN) - TOGGLE
+-- =============================================================================
+House:AddToggle({
+    Name = "Invasor de Casas (Anti-Ban)",
+    Default = false,
+    Callback = function(state)
+        if state then
+            if antiBanConnection then antiBanConnection:Disconnect() end
+            
+            -- Loop contínuo para burlar a física de ejeção do Brookhaven
+            antiBanConnection = RunService.Heartbeat:Connect(function()
+                local char = player.Character
+                if not char then return end
+                
+                -- Procura pelas barreiras invisíveis de banimento que o jogo spawna
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("BasePart") and (v.Name:lower():find("ban") or v.Name:lower():find("barrier") or v.Name == "BlockPlane") then
+                        pcall(function()
+                            v.CanCollide = false -- Torna a barreira fantasma
+                            v.Velocity = Vector3.zero
+                        end)
+                    end
+                end
+            end)
+            print("MagN Hub: Invasor de Casas ativado.")
+        else
+            if antiBanConnection then
+                antiBanConnection:Disconnect()
+                antiBanConnection = nil
+            end
+            
+            -- Restaura as colisões normais do mapa
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") and (v.Name:lower():find("ban") or v.Name:lower():find("barrier") or v.Name == "BlockPlane") then
+                    pcall(function() v.CanCollide = true end)
+                end
+            end
+            print("MagN Hub: Invasor de Casas desativado.")
+        end
+    end
+})
+
+-- =============================================================================
+-- 2. AUTO ROUBO DE COFRES - BOTÃO
+-- =============================================================================
+House:AddButton({
+    Name = "Auto Roubo de Cofres",
+    Callback = function()
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        task.spawn(function()
+            local originalCFrame = root.CFrame
+            local cofresRoubados = 0
+            
+            -- Varre todos os modelos do mapa procurando cofres ("Safe")
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name == "Safe" and obj.Parent:FindFirstChild("BombPlace") then
+                    pcall(function()
+                        -- 1. Teleporta você para dentro da sala do cofre
+                        root.CFrame = obj.CFrame * CFrame.new(0, 0, 3)
+                        task.wait(0.2)
+                        
+                        -- 2. Dispara o RemoteEvent nativo do jogo para detonar o cofre
+                        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
+                        if remotes then
+                            -- Envia o sinal simulando que você colocou e detonou a C4
+                            remotes:FindFirstChild("1Plac1eBom1b"):FireServer("PlaceBomb", obj.Parent)
+                            task.wait(0.1)
+                            remotes:FindFirstChild("1Plac1eBom1b"):FireServer("DetonateBomb")
+                            task.wait(0.3) -- Aguarda a explosão abrir a porta
+                            
+                            -- 3. Clica/Ativa o dinheiro do cofre para coletar a grana
+                            local clickDetector = obj.Parent:FindFirstChildOfClass("ClickDetector") or obj:FindFirstChildOfClass("ClickDetector")
+                            if clickDetector then
+                                fireclickdetector(clickDetector)
+                                cofresRoubados = cofresRoubados + 1
+                            end
+                        end
+                        task.wait(0.2)
+                    end)
+                end
+            end
+            
+            -- Retorna em segurança para onde você estava
+            root.Velocity = Vector3.zero
+            root.CFrame = originalCFrame
+            print("MagN Hub: Roubo finalizado! " .. cofresRoubados .. " cofres esvaziados.")
+        end)
+    end
+})
+
+-- =============================================================================
+-- 3. ALARME EM MASSA (MASS HOUSE ALARM) - BOTÃO
+-- =============================================================================
+House:AddButton({
+    Name = "Ativar Todos os Alarmes",
+    Callback = function()
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        task.spawn(function()
+            local originalCFrame = root.CFrame
+            
+            -- Procura por todos os sensores de presença ou portas principais das casas
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") and (v.Name == "HouseAlarmSensor" or v.Name == "MainDoorSensor") then
+                    pcall(function()
+                        -- Teleporta na velocidade da luz passando pelo sensor para acionar o alarme
+                        root.CFrame = v.CFrame
+                        task.wait(0.05)
+                    end)
+                end
+            end
+            
+            -- Devolve você para a sua posição original após o caos estar feito
+            root.Velocity = Vector3.zero
+            root.CFrame = originalCFrame
+            print("MagN Hub: Todos os alarmes das casas foram disparados!")
+        end)
+    end
+})
+
+-- =============================================================================
+-- 4. LUZES DA CASA (GLITCH BALADA) - TOGGLE
+-- =============================================================================
+House:AddToggle({
+    Name = "Glitch Balada (Luzes Piscando)",
+    Default = false,
+    Callback = function(state)
+        if state then
+            if baladaConnection then baladaConnection:Disconnect() end
+            
+            -- Fica ligando e desligando os interruptores do lote de forma ultra veloz
+            task.spawn(function()
+                _G.BaladaAtiva = true
+                local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
+                
+                while _G.BaladaAtiva do
+                    if remotes then
+                        pcall(function()
+                            -- Dispara os remotes de controle de energia mudando o estado rapidamente
+                            remotes:FindFirstChild("1Hous1eLigh1t"):FireServer("HouseLightToggle", true)
+                            task.wait(0.05)
+                            remotes:FindFirstChild("1Hous1eLigh1t"):FireServer("HouseLightToggle", false)
+                            task.wait(0.05)
+                        end)
+                    else
+                        task.wait(0.5)
+                    end
+                end
+            end)
+            print("MagN Hub: Glitch Balada ativado.")
+        else
+            _G.BaladaAtiva = false
+            print("MagN Hub: Glitch Balada desativado.")
+        end
+    end
+})
+
+House:AddSection({"Duplicar Casa"})
+
+House:AddButton({
+    Name = "Duplicar Casa",
+    Callback = function()
+        local players = game:GetService("Players")
+        local player = players.LocalPlayer
+        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
+        
+        if not remotes then 
+            warn("MagN Hub: Remotes do Brookhaven não encontrados.")
+            return 
+        end
+
+        task.spawn(function()
+            -- 1. Identifica qual casa você está usando atualmente
+            -- No Brookhaven, as informações das casas ficam em pastas no ReplicatedStorage ou no Workspace associadas ao seu jogador
+            local minhaCasaAtualId = nil
+            local meuLoteAtualNum = nil
+            
+            -- Varre o mapa para encontrar qual lote pertence a você neste momento
+            for _, lote in pairs(workspace:GetChildren()) do
+                if lote.Name:match("^Plot") or lote.Name:find("House") then
+                    local owner = lote:FindFirstChild("Owner") or lote:FindFirstChild("Dono")
+                    if owner and owner.Value == player.Name then
+                        meuLoteAtualNum = lote.Name
+                        -- Detecta o ID do modelo da casa construída
+                        if lote:FindFirstChild("HouseModel") then
+                            minhaCasaAtualId = lote.HouseModel:GetAttribute("HouseID") or "PrebuiltHouse"
+                        end
+                        break
+                    end
+                end
+            end
+
+            -- 2. Procura um NOVO lote totalmente vazio no servidor para clonar a casa
+            local loteVazioEncontrado = nil
+            for _, lote in pairs(workspace:GetChildren()) do
+                if lote.Name:match("^Plot") or lote.Name:find("House") then
+                    local owner = lote:FindFirstChild("Owner") or lote:FindFirstChild("Dono")
+                    -- Se o lote não tiver dono e for diferente do seu lote atual
+                    if (not owner or owner.Value == "") and lote.Name ~= meuLoteAtualNum then
+                        loteVazioEncontrado = lote
+                        break
+                    end
+                end
+            end
+
+            -- 3. Executa o Bypass de Duplicação via RemoteServer
+            if loteVazioEncontrado then
+                pcall(function()
+                    --[[
+                       Mecânica de Duplicação:
+                       O Brookhaven processa a compra enviando o ID da casa e o lote desejado.
+                       Para burlar a exclusão automática, enviamos um sinal camuflado pedindo 
+                       para registrar a mesma skin de casa no lote vazio diretamente.
+                    --]]
+                    
+                    -- Dispara o remote simulando a seleção da casa no novo espaço livre
+                    -- Nota: O nome dos remotes de lote podem variar dependendo da atualização semanal do Brookhaven
+                    remotes:FindFirstChild("1Hous1ePlac1e"):FireServer("ClaimPlot", loteVazioEncontrado.Name)
+                    task.wait(0.1)
+                    
+                    -- Se o script encontrou qual casa você estava usando, ele força o spawn dela no novo lote
+                    if minhaCasaAtualId then
+                        remotes:FindFirstChild("1Hous1ePlac1e"):FireServer("SpawnHouse", minhaCasaAtualId)
+                    else
+                        -- Caso não detecte o ID, ele abre o catálogo local permitindo você escolher qualquer uma sem apagar a anterior
+                        remotes:FindFirstChild("1Hous1ePlac1e"):FireServer("SpawnHouse", "StandardHouse1")
+                    end
+                end)
+                
+                print("todos os carros foram removidos") -- Padrão de aviso ou use o texto que preferir para casas
+                print("MagN Hub: Casa duplicada com sucesso no " .. tostring(loteVazioEncontrado.Name))
+            else
+                warn("MagN Hub: Não há lotes vazios disponíveis neste servidor para duplicar!")
+            end
+        end)
+    end
+})
+
+local RunService = game:GetService("RunService")
+local spamPortaConnection = nil -- Mantém o loop salvo na memória externa
+
+House:AddToggle({
+    Name = "Spam Bater na Porta (Mass Knock)",
+    Default = false,
+    Callback = function(state)
+        if state then
+            -- Previne duplicar a conexão caso o jogador clique rápido
+            if spamPortaConnection then spamPortaConnection:Disconnect() end
+            
+            -- Inicia o loop rápido em paralelo antes de cada quadro de física
+            spamPortaConnection = RunService.Heartbeat:Connect(function()
+                -- Encontra a pasta dos lotes do Brookhaven (geralmente workspace["001_Lots"] ou direto no workspace)
+                local lotsFolder = workspace:FindFirstChild("001_Lots") or workspace
+                
+                for _, lote in pairs(lotsFolder:GetChildren()) do
+                    -- Verifica se há uma casa ativa construída no lote
+                    if lote:FindFirstChild("HousePickedByPlayer") or lote.Name:match("^Plot") then
+                        -- Procura pelos componentes das portas ou campainhas
+                        for _, v in pairs(lote:GetDescendants()) do
+                            -- Localiza o ClickDetector nativo da batida/campainha da porta
+                            if v:IsA("ClickDetector") and (v.Parent.Name:lower():find("door") or v.Parent.Name == "Knock" or v.Parent.Name:lower():find("bell")) then
+                                pcall(function()
+                                    -- Aumenta o alcance de clique do detector para 10.000 studs de distância
+                                    v.MaxActivationDistance = 10000
+                                    
+                                    -- Dispara a batida/campainha à distância instantaneamente
+                                    fireclickdetector(v)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end)
+            print("MagN Hub: Spam de bater nas portas com alcance longo ativado.")
+        else
+            -- Quando desligar o toggle, limpa o loop da memória na hora
+            if spamPortaConnection then
+                spamPortaConnection:Disconnect()
+                spamPortaConnection = nil
+            end
+            print("MagN Hub: Spam de bater nas portas desativado.")
+        end
+    end
+})
+
+local Avatar Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://4483345998" })
+
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local jogadorSelecionadoSkin = ""
+local dropdownAvatar = nil -- Armazena a referência para atualizações dinâmicas
+
+-- Função interna para listar todos os jogadores do servidor atual
+local function ObterListaJogadores()
+    local lista = {}
+    for _, p in pairs(players:GetPlayers()) do
+        if p ~= player then -- Opcional: Remove você mesmo da lista para facilitar
+            table.insert(lista, p.Name)
+        end
+    end
+    return lista
+end
+
+-- =============================================================================
+-- DROPDOWN DE SELEÇÃO DE JOGADOR
+-- =============================================================================
+dropdownAvatar = Avatar:AddDropdown({
+    Name = "Selecionar Alvo para Skin",
+    Options = ObterListaJogadores(), -- Inicializa com os jogadores presentes
+    Callback = function(opcao)
+        jogadorSelecionadoSkin = opcao
+        print("MagN Hub: Alvo de skin definido para: " .. jogadorSelecionadoSkin)
+    end
+})
+
+-- Loops automáticos para atualizar a dropdown se alguém entrar ou sair do servidor
+players.PlayerAdded:Connect(function()
+    task.wait(0.5) -- Pequena pausa para garantir o carregamento correto do nome
+    if dropdownAvatar and (dropdownAvatar.SetOptions or dropdownAvatar.Refresh) then
+        local atualizar = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
+        atualizar(dropdownAvatar, ObterListaJogadores())
+    end
+end)
+
+players.PlayerRemoving:Connect(function()
+    task.wait(0.1)
+    if dropdownAvatar and (dropdownAvatar.SetOptions or dropdownAvatar.Refresh) then
+        local atualizar = dropdownAvatar.SetOptions or dropdownAvatar.Refresh
+        atualizar(dropdownAvatar, ObterListaJogadores())
+    end
+end)
+
+-- =============================================================================
+-- AVATAR COPIER - BOTÃO
+-- =============================================================================
+Avatar:AddButton({
+    Name = "Copiar Avatar do Alvo",
+    Callback = function()
+        -- Puxa o jogador que foi selecionado estritamente nesta dropdown da aba
+        local target = players:FindFirstChild(jogadorSelecionadoSkin)
+        
+        if not target or not target.Character then
+            warn("MagN Hub: Selecione um alvo válido na dropdown antes de copiar!")
+            return
+        end
+        
+        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
+        if not remotes or not remotes:FindFirstChild("1Updat1eAvata1r") then
+            warn("MagN Hub: Evento de catálogo do Brookhaven não encontrado.")
+            return
+        end
+        
+        task.spawn(function()
+            local tChar = target.Character
+            
+            -- Copia roupas (Camisa e Calça)
+            local shirt = tChar:FindFirstChildOfClass("Shirt")
+            local pants = tChar:FindFirstChildOfClass("Pants")
+            
+            pcall(function()
+                if shirt and shirt.ShirtTemplate then
+                    remotes["1Updat1eAvata1r"]:FireServer("WearShirt", shirt.ShirtTemplate)
+                    task.wait(0.05)
+                end
+                if pants and pants.PantsTemplate then
+                    remotes["1Updat1eAvata1r"]:FireServer("WearPants", pants.PantsTemplate)
+                    task.wait(0.05)
+                end
+            end)
+            
+            -- Varre e copia todos os acessórios (Cabelos, Chapéus, Costas, etc)
+            for _, v in pairs(tChar:GetChildren()) do
+                if v:IsA("Accessory") then
+                    local handle = v:FindFirstChild("Handle")
+                    if handle then
+                        local specialMesh = handle:FindFirstChildOfClass("SpecialMesh")
+                        if specialMesh and specialMesh.MeshId then
+                            pcall(function()
+                                remotes["1Updat1eAvata1r"]:FireServer("WearAccessory", specialMesh.MeshId)
+                            end)
+                            task.wait(0.02)
+                        end
+                    end
+                end
+            end
+            
+            print("MagN Hub: Avatar do alvo copiado com sucesso!")
+        end)
+    end
+})
+
+Avatar:AddToggle({
+    Name = "Neon Player (RGB)",
+    Default = false,
+    Callback = function(state)
+        if state then
+            if rgbConnection then rgbConnection:Disconnect() end
+            
+            local tickCounter = 0
+            rgbConnection = RunService.Heartbeat:Connect(function()
+                local char = player.Character
+                if not char then return end
+                
+                tickCounter = tickCounter + 1
+                local r = (math.sin(tickCounter * 0.05) * 127 + 128) / 255
+                local g = (math.sin(tickCounter * 0.05 + 2) * 127 + 128) / 255
+                local b = (math.sin(tickCounter * 0.05 + 4) * 127 + 128) / 255
+                local novaCor = Color3.new(r, g, b)
+                
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        pcall(function()
+                            part.Color = novaCor
+                            part.Material = Enum.Material.Neon
+                        end)
+                    end
+                end
+            end)
+        else
+            if rgbConnection then
+                rgbConnection:Disconnect()
+                rgbConnection = nil
+            end
+            
+            local char = player.Character
+            if char then
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        pcall(function() part.Material = Enum.Material.Plastic end)
+                    end
+                end
+            end
+        end
+    end
+})
+
 local Anti = Window:MakeTab({ Title = "Anti", Icon = "Home" })
 Anti:AddToggle({
    Name = "Anti Sit",
