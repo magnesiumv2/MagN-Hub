@@ -1930,7 +1930,7 @@ Car:AddButton({
     end
 })
 
-local House Window:MakeTab({ Title = "Casas", Icon = "home" })
+local House = Window:MakeTab({ Title = "Casas", Icon = "home" })
 
 local RunService = game:GetService("RunService")
 local players = game:GetService("Players")
@@ -2231,7 +2231,7 @@ House:AddToggle({
     end
 })
 
-local Avatar Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://4483345998" })
+local Avatar = Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://4483345998" })
 
 local players = game:GetService("Players")
 local player = players.LocalPlayer
