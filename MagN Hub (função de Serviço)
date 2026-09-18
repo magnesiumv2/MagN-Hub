@@ -837,10 +837,14 @@ local function ExecuteFlingBall(target, originalCFrame)
             local tchar = target.Character
             local thum = tchar:FindFirstChildOfClass("Humanoid")
 
-            if Ball:FindFirstChildWhichIsA("BodyVelocity") then
-                Ball:FindFirstChildWhichIsA("BodyVelocity"):Destroy()
+            -- Remove forças antigas da bola para não acumular bugs
+            for _, child in pairs(Ball:GetChildren()) do
+                if child:IsA("BodyVelocity") or child:IsA("BodyAngularVelocity") then
+                    child:Destroy()
+                end
             end
 
+            -- Adiciona força linear extrema
             local bv = Instance.new("BodyVelocity")
             bv.Name = "FlingPower"
             bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
@@ -848,19 +852,29 @@ local function ExecuteFlingBall(target, originalCFrame)
             bv.P = 9e900
             bv.Parent = Ball
 
+            -- Adiciona força de rotação extrema para aumentar o dano do Fling física
+            local bav = Instance.new("BodyAngularVelocity")
+            bav.Name = "FlingSpin"
+            bav.AngularVelocity = Vector3.new(9e8, 9e8, 9e8)
+            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bav.P = 9e900
+            bav.Parent = Ball
+
             workspace.CurrentCamera.CameraSubject = thum
             
             -- Loop de ataque que teleporta a bola por TODAS as partes do inimigo constantemente
             while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == players do
-                for i, v in pairs(tchar:GetChildren()) do
+                -- Usamos GetDescendants para pegar absolutamente tudo (Braços, pernas, MeshParts de R15, acessórios, etc.)
+                for _, v in pairs(tchar:GetDescendants()) do
                     if not flingActive or thum.Health <= 0 then break end
                     
-                    -- Teleporta a bola por todas as partes válidas (Braços, pernas, torso, cabeça)
-                    if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
+                    -- Modificado: Verifica se é uma BasePart e se não está ancorada. 
+                    -- Removido o filtro "v.CanCollide" para garantir que acerte mesmo se o alvo tiver partes sem colisão ativada.
+                    if v:IsA("BasePart") and not v.Anchored and v.Name ~= "HumanoidRootPart" then
                         Ball.CFrame = v.CFrame
                         Ball.Velocity = Vector3.new(9e8, 9e8, 9e8)
                         Ball.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-                        task.wait(1/2000) -- Seu timing exato do script fornecido
+                        task.wait(1/2000) -- Seu timing exato do script original
                     end
                 end
                 task.wait()
@@ -868,6 +882,7 @@ local function ExecuteFlingBall(target, originalCFrame)
             
             -- --- LIMPEZA APÓS O ATAQUE ---
             if bv then bv:Destroy() end
+            if bav then bav:Destroy() end
             Ball.Velocity = Vector3.zero
             Ball.RotVelocity = Vector3.zero
             
@@ -1076,10 +1091,10 @@ local function ExecuteFlingBoat(target, originalCFrame)
     -- [BLOCO DE EXECUÇÃO ÚNICA]: Roda estritamente UMA vez ao ativar a função
     -- =============================================================================
     root.CFrame = CFrame.new(1754, -2, 58)
-    task.wait(0.1) -- Tempo estável para carregar a física da doca
+    task.wait(0.2) -- Aumentado levemente para garantir o carregamento do mapa/doca
 
     game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Ca1r"):FireServer("PickingBoat", "MilitaryBoatFree")
-    task.wait(0.1) -- Tempo necessário para o veículo registrar no Workspace
+    task.wait(0.3) -- Tempo necessário para o veículo registrar fisicamente no Workspace
 
     -- Localiza o veículo gerado uma única vez
     local boat = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
@@ -1089,7 +1104,7 @@ local function ExecuteFlingBoat(target, originalCFrame)
     if seat then
         -- Força você a entrar no assento do motorista uma única vez
         seat:Sit(hum)
-        task.wait(0.05) -- Sincroniza a propriedade física de rede (Network Ownership)
+        task.wait(0.1) -- Sincroniza a propriedade física de rede (Network Ownership)
 
         if seat:FindFirstChild("FlingPower") then
             seat.FlingPower:Destroy()
@@ -1101,6 +1116,8 @@ local function ExecuteFlingBoat(target, originalCFrame)
         bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
         bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         bv.Parent = seat
+
+        local atacando = false -- Nova trava para controlar o estado pós-ataque
 
         -- =============================================================================
         -- [LOOP PRINCIPAL DE FOCO]: Fica monitorando o alvo continuamente sem recriar o barco
@@ -1117,6 +1134,7 @@ local function ExecuteFlingBoat(target, originalCFrame)
                 
                 workspace.CurrentCamera.CameraSubject = thum
                 local angle = 0
+                atacando = true -- Sinaliza que o ataque começou
 
                 -- Loop interno do ataque agressivo (Gira e gruda na velocidade do alvo)
                 while flingActive and thum.Health > 0 and target.Character and troot:IsDescendantOf(workspace) and seat:IsDescendantOf(workspace) do
@@ -1145,8 +1163,8 @@ local function ExecuteFlingBoat(target, originalCFrame)
                     pcall(function() hum:JumpAtCharacterHierarchy() end) -- Te tira do banco do carro
                 end
 
-                -- Executa a rotina exata: Congela -> Descongela -> Teleporta
-                if char and root and originalCFrame then
+                -- Executa a rotina exata: Congela -> Descongela -> Teleporta (APENAS SE ESTAVA ATACANDO)
+                if atacando and char and root and originalCFrame then
                     for _, part in pairs(char:GetChildren()) do
                         if part:IsA("BasePart") then
                             part.Anchored = true
@@ -1163,37 +1181,25 @@ local function ExecuteFlingBoat(target, originalCFrame)
                     end
                     task.wait(0.01) -- Milissegundos de transição
                     root.CFrame = originalCFrame -- Teleporta de volta
+                    atacando = false -- Reseta a trava
                 end
                 
                 workspace.CurrentCamera.CameraSubject = hum
             else
-                -- [ALVO NO LIMBO/SPAWN]: Te segura em Freeze estático na posição inicial enquanto aguarda o re-spawn
-                if char and root and originalCFrame then
-                    for _, part in pairs(char:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored = true
-                            part.Velocity = Vector3.zero
-                            part.RotVelocity = Vector3.zero
-                        end
-                    end
-                    task.wait(0.05)
-                    
-                    for _, part in pairs(char:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored = false
-                        end
-                    end
-                    task.wait(0.01)
-                    root.CFrame = originalCFrame
+                -- [ALVO NO LIMBO/SPAWN]: Removeu-se o spam de teletransporte infinito daqui.
+                -- Agora o script apenas mantém você seguro e aguarda o alvo reviver.
+                if seat then
+                    seat.Velocity = Vector3.zero
+                    seat.RotVelocity = Vector3.zero
                 end
             end
             
-            -- Se o alvo estiver morto ou no void, o barco te puxa de volta pro banco quando ele spawnar
+            -- Se o alvo estiver morto ou no void, garante que você volte para o banco para o próximo round
             if flingActive and hum and seat and not hum.Sit then
                 seat:Sit(hum)
             end
 
-            task.wait(0.5) -- Intervalo estável verificando se o alvo voltou à vida
+            task.wait(0.2) -- Intervalo rápido e estável verificando se o alvo voltou à vida
         end -- Fim do loop while flingActive
     end
 
