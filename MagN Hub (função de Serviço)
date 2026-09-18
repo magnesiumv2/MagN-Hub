@@ -1084,86 +1084,110 @@ local function ExecuteFlingBoat(target, originalCFrame)
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-    -- Proteção inicial: se o botão não estiver ligado, cancela
-    if not flingActive or not root or not hum then return end
+    -- Enquanto o Toggle geral (flingActive) estiver ligado, monitora o alvo continuamente
+    while flingActive and target and target.Parent == players do
+        char = player.Character
+        root = char and char:FindFirstChild("HumanoidRootPart")
+        hum = char and char:FindFirstChildOfClass("Humanoid")
 
-    -- =============================================================================
-    -- [BLOCO DE EXECUÇÃO ÚNICA]: Roda estritamente UMA vez ao ativar a função
-    -- =============================================================================
-    root.CFrame = CFrame.new(1754, -2, 58)
-    task.wait(0.2) -- Aumentado levemente para garantir o carregamento do mapa/doca
+        if not root or not hum then return end
 
-    game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Ca1r"):FireServer("PickingBoat", "MilitaryBoatFree")
-    task.wait(0.3) -- Tempo necessário para o veículo registrar fisicamente no Workspace
+        -- Verifica se o alvo está vivo e válido para iniciar o round de ataque
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local troot = target.Character.HumanoidRootPart
+            local thum = target.Character:FindFirstChildOfClass("Humanoid")
+            
+            -- [VERIFICAÇÃO DE SPAWN ÚNICO]: Procura se você já tem um barco criado no mapa
+            local boat = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
+            local seat = boat and boat:FindFirstChild("VehicleSeat")
 
-    -- Localiza o veículo gerado uma única vez
-    local boat = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
-    local seat = boat and boat:FindFirstChild("VehicleSeat")
-    local bv = nil
+            -- Se o barco NÃO existe, vai até a doca e cria UMA vez
+            if not boat or not seat then
+                root.CFrame = CFrame.new(1754, -2, 58)
+                task.wait(0.2) -- Aguarda carregar o mapa local da doca
 
-    if seat then
-        -- Força você a entrar no assento do motorista uma única vez
-        seat:Sit(hum)
-        task.wait(0.1) -- Sincroniza a propriedade física de rede (Network Ownership)
+                game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Ca1r"):FireServer("PickingBoat", "MilitaryBoatFree")
+                task.wait(0.3) -- Aguarda o servidor registrar o veículo fisicamente
 
-        if seat:FindFirstChild("FlingPower") then
-            seat.FlingPower:Destroy()
-        end
+                boat = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
+                seat = boat and boat:FindFirstChild("VehicleSeat")
+            end
 
-        -- Injeta a força massiva linear no assento do barco
-        bv = Instance.new("BodyVelocity")
-        bv.Name = "FlingPower"
-        bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Parent = seat
+            -- Se o barco foi localizado ou criado com sucesso, inicia a preparação física
+            if seat then
+                -- Garante que seu personagem está totalmente móvel
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.Anchored = false end
+                end
 
-        local atacando = false -- Nova trava para controlar o estado pós-ataque
+                -- Força você a entrar no assento do motorista
+                seat:Sit(hum)
+                task.wait(0.1) -- Tempo necessário para sincronizar a Network Ownership
 
-        -- =============================================================================
-        -- [LOOP PRINCIPAL DE FOCO]: Fica monitorando o alvo continuamente sem recriar o barco
-        -- =============================================================================
-        while flingActive and target and target.Parent == players and boat:IsDescendantOf(workspace) and seat:IsDescendantOf(workspace) do
-            char = player.Character
-            root = char and char:FindFirstChild("HumanoidRootPart")
-            hum = char and char:FindFirstChildOfClass("Humanoid")
+                -- Limpa forças antigas
+                if seat:FindFirstChild("FlingPower") then seat.FlingPower:Destroy() end
+                if root:FindFirstChild("PlayerFlingPower") then root.PlayerFlingPower:Destroy() end
 
-            -- Se o alvo estiver vivo e válido, inicia a perseguição estilo Fling Ball
-            if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                local troot = target.Character.HumanoidRootPart
-                local thum = target.Character:FindFirstChildOfClass("Humanoid")
-                
+                -- Injeta as forças massivas no ASSENTO do barco
+                local bvSeat = Instance.new("BodyVelocity")
+                bvSeat.Name = "FlingPower"
+                bvSeat.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                bvSeat.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bvSeat.Parent = seat
+
+                -- Injeta as forças massivas no SEU PERSONAGEM (Como pretendido)
+                local bvPlayer = Instance.new("BodyVelocity")
+                bvPlayer.Name = "PlayerFlingPower"
+                bvPlayer.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                bvPlayer.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bvPlayer.Parent = root
+
                 workspace.CurrentCamera.CameraSubject = thum
                 local angle = 0
-                atacando = true -- Sinaliza que o ataque começou
+                local atacando = true
 
-                -- Loop interno do ataque agressivo (Gira e gruda na velocidade do alvo)
+                -- Loop interno de ataque: Persegue colado na velocidade e rotação do alvo
                 while flingActive and thum.Health > 0 and target.Character and troot:IsDescendantOf(workspace) and seat:IsDescendantOf(workspace) do
+                    -- Se o alvo sentar em algo ou deslogar no meio do caminho, quebra o loop
+                    if thum.Sit then break end
+                    
                     angle = (angle + 50) % 360
 
-                    -- Cálculo preditivo idêntico ao Fling Ball
+                    -- Cálculo preditivo idêntico ao seu Fling Ball baseado na velocidade do alvo
                     local pos_x = troot.Position.X + (troot.Velocity.X / 1.5)
                     local pos_y = troot.Position.Y + (troot.Velocity.Y / 1.5)
                     local pos_z = troot.Position.Z + (troot.Velocity.Z / 1.5)
 
-                    -- Arrasta você e o barco até o alvo
-                    seat.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+                    -- Arrasta o barco e você simultaneamente até a hitbox do alvo girando agressivo
+                    local targetCFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+                    seat.CFrame = targetCFrame
+                    root.CFrame = targetCFrame
+
                     seat.Velocity = Vector3.new(9e8, 9e8, 9e8)
                     seat.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+                    root.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                    root.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+                    
                     task.wait()
                 end
 
-                -- --- CORTE DE RECUPERAÇÃO APÓS ALVO MORRER/FLINGAR ---
-                if seat then
-                    seat.Velocity = Vector3.zero
-                    seat.RotVelocity = Vector3.zero
+                -- =============================================================================
+                -- [FALLECIMENTO/FLINGADO]: O Alvo Morreu ou Sumiu no Void. Inicia a Limpeza
+                -- =============================================================================
+                if bvSeat then bvSeat:Destroy() end
+                if bvPlayer then bvPlayer:Destroy() end
+                
+                -- Deleta o barco imediatamente após o ataque acabar (como pedido)
+                if boat then 
+                    pcall(function() boat:Destroy() end) 
                 end
 
                 if hum then 
                     hum.PlatformStand = false
-                    pcall(function() hum:JumpAtCharacterHierarchy() end) -- Te tira do banco do carro
+                    pcall(function() hum:JumpAtCharacterHierarchy() end) -- Ejeta você do banco localmente
                 end
 
-                -- Executa a rotina exata: Congela -> Descongela -> Teleporta (APENAS SE ESTAVA ATACANDO)
+                -- Rotina de recuperação milimétrica estável: Congela -> Descongela -> Retorna Seguro
                 if atacando and char and root and originalCFrame then
                     for _, part in pairs(char:GetChildren()) do
                         if part:IsA("BasePart") then
@@ -1172,40 +1196,34 @@ local function ExecuteFlingBoat(target, originalCFrame)
                             part.RotVelocity = Vector3.zero
                         end
                     end
-                    task.wait(0.05) -- Milissegundos congelado
+                    task.wait(0.05) -- Segura congelado por milissegundos
                     
                     for _, part in pairs(char:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored = false
-                        end
+                        if part:IsA("BasePart") then part.Anchored = false end
                     end
-                    task.wait(0.01) -- Milissegundos de transição
-                    root.CFrame = originalCFrame -- Teleporta de volta
-                    atacando = false -- Reseta a trava
+                    task.wait(0.01)
+                    
+                    root.CFrame = originalCFrame -- Te devolve seguro para onde você ativou o Hub
+                    atacando = false
                 end
                 
                 workspace.CurrentCamera.CameraSubject = hum
-            else
-                -- [ALVO NO LIMBO/SPAWN]: Removeu-se o spam de teletransporte infinito daqui.
-                -- Agora o script apenas mantém você seguro e aguarda o alvo reviver.
-                if seat then
-                    seat.Velocity = Vector3.zero
-                    seat.RotVelocity = Vector3.zero
-                end
             end
-            
-            -- Se o alvo estiver morto ou no void, garante que você volte para o banco para o próximo round
-            if flingActive and hum and seat and not hum.Sit then
-                seat:Sit(hum)
+        else
+            -- Se o alvo estiver morto ou no void total esperando o re-spawn, te mantém seguro na base
+            if char and root and originalCFrame then
+                root.Velocity = Vector3.zero
+                root.RotVelocity = Vector3.zero
+                root.CFrame = originalCFrame
             end
+        end
 
-            task.wait(0.2) -- Intervalo rápido e estável verificando se o alvo voltou à vida
-        end -- Fim do loop while flingActive
+        task.wait(0.5) -- Intervalo estável de checagem aguardando o alvo spawnar novamente
     end
 
-    -- --- LIMPEZA COMPLETA AO DESLIGAR O TOGGLE MANUAMENTE ---
-    if bv then bv:Destroy() end
-    if boat then pcall(function() boat:Destroy() end) end
+    -- --- LIMPEZA DE SEGURANÇA SE O TOGGLE FOR DESLIGADO MANUALLY ---
+    local boatClean = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
+    if boatClean then pcall(function() boatClean:Destroy() end) end
     if hum then workspace.CurrentCamera.CameraSubject = hum end
 end
 
