@@ -1908,7 +1908,104 @@ Car:AddButton({
 
 local Lag = Window:MakeTab({ Title = "Ferramentas", Icon = "rbxassetid://4483345998" })
 
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- Variáveis de controle globais
+local intensidadeSpam = 50
+local detonaMassaAtivo = false
+local cliqueConexao = nil
+
+-- 1. Slider para definir a quantidade de cliques e bombas no chão
+Lag:AddSlider({
+    Name = "Quantidade de Cliques / Bombas",
+    Min = 10,
+    Max = 300,
+    Default = 50,
+    Callback = function(v)
+        intensidadeSpam = v
+    end
+})
+
+-- 2. Toggle com o fluxo exato de ações em sequência
+Lag:AddToggle({
+    Name = "Detonar Bomba em Massa (Click)",
+    Default = false,
+    Callback = function(v)
+        detonaMassaAtivo = v
+        
+        if detonaMassaAtivo then
+            local character = LocalPlayer.Character
+            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+            
+            if rootPart then
+                -- PASSO 1: Salva a posição inicial de onde você ativou a função
+                local posicaoOriginal = rootPart.CFrame
+                
+                -- Resolução do Path exato fornecido por você para a bomba do cenário
+                local workspaceCom = Workspace:FindFirstChild("WorkspaceCom")
+                local criminalWeapons = workspaceCom and workspaceCom:FindFirstChild("001_CriminalWeapons")
+                local giveTools = criminalWeapons and criminalWeapons:FindFirstChild("GiveTools")
+                local bombaBase = giveTools and giveTools:FindFirstChild("Bomb")
+                local clickDetector = bombaBase and bombaBase:FindFirstChildOfClass("ClickDetector")
+                
+                -- PASSO 2: Teleporta até a bomba secreta (Apenas uma vez)
+                if bombaBase and bombaBase:IsA("BasePart") then
+                    rootPart.CFrame = bombaBase.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.4) -- Tempo para o jogo registrar que você chegou lá
+                end
+                
+                -- PASSO 3: Executa o spam de cliques baseado no Slider
+                if clickDetector then
+                    for i = 1, intensidadeSpam do 
+                        if not detonaMassaAtivo then break end
+                        fireclickdetector(clickDetector)
+                    end
+                end
+                
+                -- PASSO 4: Retorna imediatamente à posição de origem
+                rootPart.CFrame = posicaoOriginal
+                task.wait(0.2)
+                
+                -- PASSO 5: Agora que voltou, libera a colocação de bombas por clique no mapa
+                cliqueConexao = Mouse.Button1Down:Connect(function()
+                    if not detonaMassaAtivo then return end
+                    
+                    local alvoPosicao = Mouse.Hit
+                    
+                    -- Remotes que você mapeou
+                    local PlaceRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Too1l")
+                    local BlowRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Blo1wBomb1sServe1r")
+                    
+                    if PlaceRemote and BlowRemote then
+                        -- Define o limite de bombas geradas por clique (máximo 40 por clique para evitar lag local excessivo)
+                        local limiteBombas = math.clamp(intensidadeSpam, 1, 40)
+                        
+                        -- Coloca a quantidade de bombas definida diretamente na posição do clique do mouse
+                        for i = 1, limiteBombas do
+                            PlaceRemote:InvokeServer("Bomb", "Place", alvoPosicao.Position)
+                        end
+                        
+                        -- Pequena pausa milimétrica para o servidor carregar as instâncias e detona tudo de uma vez
+                        task.wait(0.05)
+                        BlowRemote:FireServer()
+                    end
+                end)
+            end
+        else
+            -- Limpa a conexão do mouse ao desativar o Toggle para restaurar os cliques comuns do jogador
+            if cliqueConexao then
+                cliqueConexao:Disconnect()
+                cliqueConexao = nil
+            end
+        end
+    end
+})
 
 local House = Window:MakeTab({ Title = "Casas", Icon = "home" })
 
