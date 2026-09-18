@@ -799,229 +799,16 @@ Troll:AddToggle({
         end
     })
 
-Troll:AddToggle({
-    Name = "Fling Couch",
-    Default = false,
-    Callback = function(state)
-        flingActive = state
-        
-        -- Se o Toggle foi ativado (LIGADO)
-        if state then
-            task.spawn(function()
-                -- O loop principal roda enquanto o Toggle estiver ligado
-                while flingActive do
-                    if selectedPlayerName then
-                        local target = Players:FindFirstChild(selectedPlayerName)
-                        
-                        -- Verifica se o alvo existe, tem um personagem vivo e não está no processo de ataque
-                        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                            local tHum = target.Character:FindFirstChildOfClass("Humanoid")
-                            
-                            -- Só ataca se o alvo não estiver sentado (já derrubado)
-                            if not tHum.Sit then
-                                local char = LocalPlayer.Character
-                                local root = char and char:FindFirstChild("HumanoidRootPart")
-                                local tRoot = target.Character:FindFirstChild("Head")
-                                
-                                if root and tRoot then
-                                    local hum = char:FindFirstChildOfClass("Humanoid")
-                                    
-                                    -- 1. Limpa as ferramentas antigas
-                                    local argsClean = {"ClearAllTools"}
-                                    game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
-                                    task.wait(0.0001)
+-- Variáveis globais de controle para os métodos
+local currentMethod = "Ball" -- Método padrão inicial
+local flingActive = false
 
-                                    -- 2. Pega o Sofá
-                                    local argsGet = {
-                                        [1] = "PickingTools",
-                                        [2] = "Couch"
-                                    }
-                                    game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
-
-                                    task.wait(0.0001)
-                                    local tool = LocalPlayer.Backpack:FindFirstChild("Couch")
-                                    if tool then
-                                        tool.Parent = char
-                                    end
-                                    task.wait(0.0001)
-
-                                    workspace.FallenPartsDestroyHeight = -999999
-
-                                    -- 3. SOLTA O SOFÁ DA MÃO DO PERSONAGEM REAL
-                                    -- Removemos o RightGrip (a solda que o Roblox cria automaticamente na mão)
-                                    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-                                    if rightHand then
-                                        local grip = rightHand:FindFirstChild("RightGrip")
-                                        if grip then grip:Destroy() end
-                                    end
-
-                                    local handle = tool:FindFirstChild("Handle")
-                                    local bv = nil
-                                    
-                                    if handle then
-                                        -- Remove colisões com você mesmo para não te dar "fling"
-                                        handle.CanCollide = false
-                                        
-                                        -- Cria as forças absurdas DIRETAMENTE na Handle do sofá
-                                        bv = Instance.new("BodyVelocity")
-                                        bv.Name = "FlingForce"
-                                        bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                                        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                                        bv.Parent = handle
-                                    end
-                                    
-                                    -- Foca a câmera no alvo para você assistir
-                                    cam.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
-
-                                    task.wait(0.001)
-
-                                    -- Simula o F (Pressiona e Solta)
-                                    local vim = game:GetService("VirtualInputManager")
-                                    vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-                                    task.wait(0.0001)
-                                    vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
-
-                                    local angle = 0
-                                    -- Loop interno do ataque (Move apenas o sofá até o alvo)
-                                    while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and handle and handle:IsDescendantOf(workspace) do
-                                        local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
-                                        if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
-                                        
-                                        angle = (angle + 50) % 360
-
-                                        local pos_x = target.Character.HumanoidRootPart.Position.X
-                                        local pos_y = target.Character.HumanoidRootPart.Position.Y
-                                        local pos_z = target.Character.HumanoidRootPart.Position.Z
-                                        pos_x = pos_x + (target.Character.HumanoidRootPart.Velocity.X / 1.5)
-                                        pos_y = pos_y + (target.Character.HumanoidRootPart.Velocity.Y / 1.5)
-                                        pos_z = pos_z + (target.Character.HumanoidRootPart.Velocity.Z / 1.5)
-                                        
-                                        -- A Handle do Sofá é teleportada e girada na HumanoidRootPart do inimigo
-                                        handle.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
-
-                                        handle.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                                        handle.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-                                        task.wait()
-                                    end
-                                    
-                                    -- --- LIMPEZA APÓS O ATAQUE ---
-                                    if bv then bv:Destroy() end
-                                    
-                                    if hum then
-                                        hum:UnequipTools()
-                                    end
-                                    
-                                    -- Devolve a câmera para você
-                                    cam.CameraSubject = hum
-                                    game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
-                                end
-                            end
-                        end
-                    end
-                    task.wait(0.5)
-                end
-            end)
-        else
-            flingActive = false
-        end
-    end
-})
-
-Troll:AddToggle({
-    Name = "Couch Void Trap",
-    Default = false,
-    Callback = function(state)
-        voidTrapActive = state
-        
-        if state then
-            task.spawn(function()
-                while voidTrapActive do
-                    if selectedPlayerName then
-                        local target = Players:FindFirstChild(selectedPlayerName)
-                        
-                        -- Verifica se o alvo é válido e está vivo
-                        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                            local tHum = target.Character:FindFirstChildOfClass("Humanoid")
-                            local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
-                            
-                            -- Só inicia se o alvo ainda NÃO estiver sentado
-                            if not tHum.Sit then
-                                local char = LocalPlayer.Character
-                                
-                                if char and tRoot then
-                                    -- 1. Limpa e pega o Sofá
-                                    local argsClean = {"ClearAllTools"}
-                                    game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
-                                    task.wait(0.05)
-
-                                    local argsGet = {
-                                        [1] = "PickingTools",
-                                        [2] = "Couch"
-                                    }
-                                    game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
-                                    task.wait(0.05)
-
-                                    local tool = LocalPlayer.Backpack:FindFirstChild("Couch")
-                                    if tool then
-                                        tool.Parent = char
-                                    end
-                                    task.wait(0.05)
-
-                                    -- 2. Solta o sofá da mão do LocalPlayer
-                                    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-                                    if rightHand then
-                                        local grip = rightHand:FindFirstChild("RightGrip")
-                                        if grip then grip:Destroy() end
-                                    end
-
-                                    local handle = tool:FindFirstChild("Handle")
-                                    if handle then
-                                        handle.CanCollide = false
-                                        
-                                        -- 3. Loop: Mantém o sofá nas pernas do alvo até ele sentar
-                                        while voidTrapActive and tHum and tHum.Health > 0 and not tHum.Sit do
-                                            -- Tenta posicionar levemente abaixo do RootPart (onde ficam as pernas)
-                                            handle.CFrame = tRoot.CFrame * CFrame.new(0, -2, 0)
-                                            task.wait()
-                                        end
-
-                                        -- 4. O alvo sentou! Teleporta o sofá para milímetros acima do limite de destruição do Void
-                                        if tHum.Sit then
-                                            -- Define uma altura segura logo acima de onde as partes são deletadas automaticamente
-                                            local voidY = workspace.FallenPartsDestroyHeight + 15
-                                            handle.CFrame = CFrame.new(tRoot.Position.X, voidY, tRoot.Position.Z)
-                                            
-                                            -- Espera um instante para o jogo processar a queda do alvo junto com o sofá
-                                            task.wait(0.1)
-                                            
-                                            -- 5. Deleta o sofá (tirando da mochila/personagem) deixando o alvo cair livremente no void
-                                            tool:Destroy()
-                                            
-                                            -- Limpa o servidor por segurança externa
-                                            game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
-                                        end
-                                    end
-
-                                end
-                            end
-                        end
-                    end
-                    task.wait(0.3) -- Pausa rápida antes de checar o alvo novamente
-                end
-            end)
-        else
-            voidTrapActive = false
-        end
-    end
-})
-
-local function FlingBall(target)
-
+-- Função Auxiliar do Fling Ball (Otimizada e com Física Estabilizada)
+local function ExecuteFlingBall(target)
     local players = game:GetService("Players")
     local player = players.LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid")
-    local hrp = character:WaitForChild("HumanoidRootPart")
     local backpack = player:WaitForChild("Backpack")
     local ServerBalls = workspace.WorkspaceCom:WaitForChild("001_SoccerBalls")
 
@@ -1037,9 +824,16 @@ local function FlingBall(target)
     end
 
     local Ball = ServerBalls:FindFirstChild("Soccer" .. player.Name) or GetBall()
-    Ball.CanCollide = false
-    Ball.Massless = true
-    Ball.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0, 0)
+    
+    Ball.CanCollide = true 
+    Ball.Massless = false  
+    Ball.CustomPhysicalProperties = PhysicalProperties.new(100, 0, 0, 100, 100) 
+
+    if sethiddenproperty then
+        sethiddenproperty(Ball, "NetworkOwnershipRule", Enum.NetworkOwnershipRule.Manual)
+    elseif Ball.SetNetworkOwner then
+        pcall(function() Ball:SetNetworkOwner(player) end)
+    end
 
     if target ~= player then
         local tchar = target.Character
@@ -1053,43 +847,169 @@ local function FlingBall(target)
 
             local bv = Instance.new("BodyVelocity")
             bv.Name = "FlingPower"
-            bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+            bv.Velocity = Vector3.new(5e7, 5e7, 5e7)
             bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            bv.P = 9e900
             bv.Parent = Ball
 
             workspace.CurrentCamera.CameraSubject = thum
-            local StartTime = os.time()
-            repeat
-                if troot.Velocity.Magnitude > 0 then
-                -- Cálculo da posição ajustada com base na velocidade do alvo
-                local pos_x = troot.Position.X + (troot.Velocity.X / 1.5)
-                local pos_y = troot.Position.Y + (troot.Velocity.Y / 1.5)
-                local pos_z = troot.Position.Z + (troot.Velocity.Z / 1.5)
-
-                -- Posiciona a bola diretamente na posição ajustada
-                local position = Vector3.new(pos_x, pos_y, pos_z)
-                Ball.CFrame = CFrame.new(position)
-                Ball.Orientation += Vector3.new(45, 60, 30)
-else
-for i, v in pairs(tchar:GetChildren()) do
-if v:IsA("BasePart") and v.CanCollide and not v.Anchored then
-Ball.CFrame = v.CFrame
-task.wait(1/2000)
-end
-end
-end
-                task.wait(1/6000)
-            until troot.Velocity.Magnitude > 1000 or thum.Health <= 0 or not tchar:IsDescendantOf(workspace) or target.Parent ~= players
+            
+            local angle = 0
+            while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == players do
+                angle = (angle + 45) % 360
+                local predictedPos = troot.Position + (troot.Velocity * 0.15)
+                
+                Ball.CFrame = CFrame.new(predictedPos + Vector3.new(0, -1, 0)) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+                Ball.Velocity = Vector3.new(5e7, 5e7, 5e7)
+                Ball.RotVelocity = Vector3.new(5e7, 5e7, 5e7)
+                task.wait() 
+            end
+            
+            if bv then bv:Destroy() end
+            Ball.Velocity = Vector3.zero
+            Ball.RotVelocity = Vector3.zero
             workspace.CurrentCamera.CameraSubject = humanoid
         end
     end
 end
 
-Troll:AddButton({
-    Name = "Fling Ball",
-    Callback = function()
-        FlingBall(game:GetService("Players")[selectedPlayerName])
+-- Função Auxiliar do Fling Couch (Otimizada para não cair a Internet)
+local function ExecuteFlingCouch(target)
+    local players = game:GetService("Players")
+    local player = players.LocalPlayer
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local originalCFrame = root and root.CFrame 
+
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+        local tHum = target.Character:FindFirstChildOfClass("Humanoid")
+        local tRoot = target.Character:FindFirstChild("Head")
+        
+        if not tHum.Sit and root and tRoot and hum then
+            local tool = char:FindFirstChild("Couch") or player.Backpack:FindFirstChild("Couch")
+            if not tool then
+                local argsClean = {"ClearAllTools"}
+                game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Clea1rTool1s"):FireServer(unpack(argsClean))
+                task.wait(0.03)
+
+                local argsGet = {"PickingTools", "Couch"}
+                game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
+                task.wait(0.03)
+                
+                tool = player.Backpack:FindFirstChild("Couch")
+            end
+
+            if tool and tool.Parent ~= char then
+                tool.Parent = char
+                task.wait(0.02)
+            end
+
+            workspace.FallenPartsDestroyHeight = -999999
+
+            if root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
+
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "FlingForce"
+            bv.Velocity = Vector3.new(5e7, 5e7, 5e7) 
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Parent = root
+            
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            hum.PlatformStand = false
+            workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChild("Head") or tRoot
+
+            task.wait(0.03)
+
+            local vim = game:GetService("VirtualInputManager")
+            vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+            task.wait(0.02)
+            vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+
+            local angle = 0
+            while flingActive and target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") do
+                local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
+                if not currentHum or currentHum.Sit or currentHum.Health <= 0 then break end
+                
+                angle = (angle + 45) % 360
+                local pos_x = target.Character.Head.Position.X + (target.Character.Head.Velocity.X / 1.5)
+                local pos_y = target.Character.Head.Position.Y + (target.Character.Head.Velocity.Y / 1.5)
+                local pos_z = target.Character.Head.Position.Z + (target.Character.Head.Velocity.Z / 1.5)
+                
+                root.CFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
+                root.Velocity = Vector3.new(5e7, 5e7, 5e7)
+                root.RotVelocity = Vector3.new(5e7, 5e7, 5e7)
+                task.wait()
+            end
+            
+            if bv then bv:Destroy() end
+            if hum then
+                hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                hum.PlatformStand = false
+                hum:UnequipTools()
+            end
+            
+            if root and originalCFrame then
+                root.CFrame = originalCFrame
+                for _, p in pairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") then
+                        p.Velocity = Vector3.zero
+                        p.RotVelocity = Vector3.zero
+                    end
+                end
+            end
+            workspace.CurrentCamera.CameraSubject = hum
+            task.wait(0.05)
+        end
+    end
+end
+
+-- ==================== ELEMENTOS DA SUA INTERFACE (GUI) ====================
+
+-- 1. Dropdown para escolher qual método usar
+Troll:AddDropdown({
+    Name = "Métodos",
+    Default = "Ball",
+    Options = {"Ball", "Couch"},
+    Callback = function(selectedOption)
+        currentMethod = selectedOption
+    end
+})
+
+-- 2. Toggle Unificado que liga e desliga o método escolhido na Dropdown
+Troll:AddToggle({
+    Name = "Fling",
+    Default = false,
+    Callback = function(state)
+        flingActive = state
+        
+        if state then
+            task.spawn(function()
+                while flingActive do
+                    if selectedPlayerName then
+                        local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
+                        
+                        if target then
+                            -- Verifica qual método está selecionado na dropdown e executa
+                            if currentMethod == "Ball" then
+                                ExecuteFlingBall(target)
+                            elseif currentMethod == "Couch" then
+                                ExecuteFlingCouch(target)
+                            end
+                        end
+                    end
+                    task.wait(0.5) -- Pausa estável para reavaliar o alvo e respirar a rede
+                end
+            end)
+        else
+            -- Garante a interrupção física imediata ao desligar o botão principal
+            flingActive = false
+            
+            local char = game:GetService("Players").LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if root and root:FindFirstChild("FlingForce") then root.FlingForce:Destroy() end
+            if hum then workspace.CurrentCamera.CameraSubject = hum end
+        end
     end
 })
 
