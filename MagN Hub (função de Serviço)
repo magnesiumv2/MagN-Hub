@@ -1399,7 +1399,6 @@ Troll:AddButton({
    Name = "Kill",
    Callback = function()
 task.spawn(function()
-                while flingActive do
                     if selectedPlayerName then
                         local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
                         
@@ -1418,6 +1417,27 @@ task.spawn(function()
              end
          end
     end
+end
+})
+
+Troll:AddButton({
+   Name = "Bring",
+   Callback = function()
+task.spawn(function()
+                    if selectedPlayerName then
+                        local target = game:GetService("Players"):FindFirstChild(selectedPlayerName)
+                        
+                        if target then
+                            -- Verifica qual método está selecionado na dropdown e executa
+                            if currentMethod == "Ball" then
+                                ExecuteFlingBall(target)
+                            elseif currentMethod == "Couch" then
+                                ExecuteFlingCouch(target)
+                            elseif currentMethod == "Boat" then
+                                ExecuteFlingBoat(target)
+                            end
+                        end
+                    end
 end
 })
 
