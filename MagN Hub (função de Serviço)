@@ -1014,7 +1014,7 @@ end
 
 -- 1. Dropdown para escolher qual método usar
 Troll:AddDropdown({
-    Name = "Fling Method",
+    Name = "Método",
     Default = "Ball",
     Options = {"Ball", "Couch"},
     Callback = function(selectedOption)
@@ -1024,7 +1024,7 @@ Troll:AddDropdown({
 
 -- 2. Toggle Unificado que liga e desliga o método escolhido na Dropdown
 Troll:AddToggle({
-    Name = "Execute Fling Attack",
+    Name = "Fling",
     Default = false,
     Callback = function(state)
         flingActive = state
