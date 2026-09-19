@@ -54,74 +54,92 @@ InfoTab:AddButton({
 
 local GlitchSection = Window:MakeTab({ Title = "Skybox Server", Icon = "Home" })
 
--- Adicione este Toggle na aba visual ou de trollagem do seu MagN Hub
-GlitchSection:AddToggle({
-   Name = "Skybox black",
-   Callback = function(state)
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local conexaoInvisivel = nil
+
+TabBrook:AddToggle({"Céu Preto Perfeito (Cartola Style)", false, function(State)
+    local LocalPlayer = game:GetService("Players").LocalPlayer
     local Character = LocalPlayer.Character
     
+    -- Seus IDs configurados
+    local CamisaPretaID = 8285369350 
+    local TorsoEsticavelID = 92757812011061 
+
     if State then
-        -------------------------------------------------------------------
-        -- 1. ATIVAR O SKYBOX HUMANO
-        -------------------------------------------------------------------
         if Character and Character:FindFirstChild("Humanoid") then
             local Humanoid = Character.Humanoid
+            local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization")
             
-            -- Usa o sistema nativo do Brookhaven para equipar roupas/corpos específicos por ID
-            -- (Substitua as IDs abaixo pelas IDs do corpo/roupa que você deseja que estique)
-            local IdRoupaCursed = 000000000 -- Insira a ID da camisa/calça 2D aqui
-            
-            -- Simulando o envio de ID para a mecânica do Brookhaven (Remotes do Jogo)
-            -- Nota: O Brookhaven usa RemoteEvents para atualizar roupas e pacotes de avatar
+            -- 1. Equipa o torso esticável e as roupas pretas via Brookhaven
             pcall(function()
-                game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization"):FireServer("Shirt", IdRoupaCursed)
-                game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization"):FireServer("Pants", IdRoupaCursed)
+                if Remote then
+                    Remote:FireServer("WearPack", TorsoEsticavelID)
+                    Remote:FireServer("Shirt", CamisaPretaID)
+                    Remote:FireServer("Pants", CamisaPretaID)
+                end
             end)
             
-            -- 2. MECÂNICA DE ESTICAR: Altera os valores de escala do corpo (R15)
-            -- Isso faz as partes do corpo e as roupas 2D expandirem como um quadrado gigante
-            local BodySizes = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
-            for _, scaleName in ipairs(BodySizes) do
-                local scaleObj = Humanoid:FindFirstChild(scaleName)
-                if scaleObj and scaleObj:IsA("NumberValue") then
-                    -- Multiplica o tamanho para criar o bloco gigante (ex: 50 vezes o tamanho)
-                    scaleObj.Value = 50 
+            -- 2. Estica o torso ao limite (Multiplicador de Escala R15)
+            local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
+            for _, nomeEscala in ipairs(Escalas) do
+                local valorEscala = Humanoid:FindFirstChild(nomeEscala)
+                if valorEscala and valorEscala:IsA("NumberValue") then
+                    valorEscala.Value = 150 -- Valor ideal para tampar todo o céu
                 end
             end
             
-            -- 3. ANIMAÇÃO (Opcional)
-            -- Força uma animação estática ou de Glitch para travar o corpo no formato correto
-            -- local Animation = Instance.new("Animation")
-            -- Animation.AnimationId = "rbxassetid://ID_DA_ANIMACAO_TRAVADA"
-            -- local Track = Humanoid:LoadAnimation(Animation)
-            -- Track:Play()
+            -- 3. Loop para deixar braços e pernas 100% invisíveis na sua tela e travar o visual
+            local membrosParaEsconder = {
+                "LeftUpperArm", "LeftLowerArm", "LeftHand",
+                "RightUpperArm", "RightLowerArm", "RightHand",
+                "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+                "RightUpperLeg", "RightLowerLeg", "RightFoot"
+            }
             
-            RedzLibrary:SetNotification({"MagN Hub", "Skybox Humano Ativado! Todos estão vendo.", 4})
+            conexaoInvisivel = RunService.RenderStepped:Connect(function()
+                if LocalPlayer.Character then
+                    for _, nomeMembro in ipairs(membrosParaEsconder) do
+                        local parte = LocalPlayer.Character:FindFirstChild(nomeMembro)
+                        if parte and parte:IsA("BasePart") then
+                            parte.Transparency = 1 -- Deixa invisível
+                        end
+                    end
+                end
+            end)
+            
+            RedzLibrary:SetNotification({"MagN Hub", "Céu Preto Ativado (Membros Ocultados)!", 4})
         end
     else
         -------------------------------------------------------------------
-        -- 2. DESATIVAR E RESTAURAR O AVATAR
+        -- DESATIVAR E RESTAURAR TUDO
         -------------------------------------------------------------------
+        -- Desliga o loop de invisibilidade
+        if conexaoInvisivel then
+            conexaoInvisivel:Disconnect()
+            conexaoInvisivel = nil
+        end
+        
         if Character and Character:FindFirstChild("Humanoid") then
             local Humanoid = Character.Humanoid
             
-            -- Retorna o tamanho do personagem ao padrão normal (R15 = 1)
-            local BodySizes = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
-            for _, scaleName in ipairs(BodySizes) do
-                local scaleObj = Humanoid:FindFirstChild(scaleName)
-                if scaleObj and scaleObj:IsA("NumberValue") then
-                    scaleObj.Value = 1
+            -- Retorna o tamanho ao padrão normal
+            local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
+            for _, nomeEscala in ipairs(Escalas) do
+                local valorEscala = Humanoid:FindFirstChild(nomeEscala)
+                if valorEscala and valorEscala:IsA("NumberValue") then
+                    valorEscala.Value = 1
                 end
             end
             
-            -- Reseta o avatar usando o próprio controle do Brookhaven
+            -- Torna os membros visíveis novamente ao resetar o avatar
             pcall(function()
-                game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization"):FireServer("ResetAvatar")
+                local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization")
+                if Remote then
+                    Remote:FireServer("ResetAvatar")
+                end
             end)
             
-            RedzLibrary:SetNotification({"MagN Hub", "Avatar restaurado ao normal.", 3})
+            RedzLibrary:SetNotification({"MagN Hub", "Céu e avatar restaurados.", 3})
         end
     end
 end})
