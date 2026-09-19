@@ -1921,7 +1921,7 @@ local intensidadeSpam = 50
 local detonaMassaAtivo = false
 local cliqueConexao = nil
 
--- Função auxiliar para contar quantas ferramentas com o nome "Bomb" você tem no inventário/mão
+-- Função auxiliar para contar exatamente quantas bombas existem no inventário ou na mão
 local function contarBombasNoInventario()
     local qtd = 0
     local mochila = LocalPlayer:FindFirstChild("Backpack")
@@ -1944,7 +1944,7 @@ local function contarBombasNoInventario()
     return qtd
 end
 
--- 1. Slider para definir a quantidade de bombas (intensidade)
+-- 1. Slider para definir a quantidade desejada de cliques/bombas
 Lag:AddSlider({
     Name = "Quantidade de Cliques / Bombas",
     Min = 10,
@@ -1955,7 +1955,7 @@ Lag:AddSlider({
     end
 })
 
--- 2. Toggle com trava real baseada no inventário e spawn assíncrono total
+-- 2. Toggle principal com o fluxo cronológico corrigido
 Lag:AddToggle({
     Name = "Detonar Bomba em Massa (Click)",
     Default = false,
@@ -1967,38 +1967,37 @@ Lag:AddToggle({
             local rootPart = character and character:FindFirstChild("HumanoidRootPart")
             
             if rootPart then
-                -- PASSO 1: Salva a sua posição atual antes do teleporte
+                -- PASSO 1: Salva a posição inicial exata de onde o botão foi apertado
                 local posicaoOriginal = rootPart.CFrame
                 
-                -- Caminho exato fornecido para a bomba fixa do cenário
+                -- Resolução do Path exato fornecido por você para a bomba fixa do cenário
                 local workspaceCom = Workspace:FindFirstChild("WorkspaceCom")
                 local criminalWeapons = workspaceCom and workspaceCom:FindFirstChild("001_CriminalWeapons")
                 local giveTools = criminalWeapons and criminalWeapons:FindFirstChild("GiveTools")
                 local bombaBase = giveTools and giveTools:FindFirstChild("Bomb")
                 local clickDetector = bombaBase and bombaBase:FindFirstChildOfClass("ClickDetector")
                 
-                -- PASSO 2: Teleporta até o esconderijo dos bandidos uma única vez
+                -- PASSO 2: Teleporta até o esconderijo dos bandidos (Apenas uma vez)
                 if bombaBase and bombaBase:IsA("BasePart") then
                     rootPart.CFrame = bombaBase.CFrame + Vector3.new(0, 3, 0)
-                    task.wait(0.5) -- Estabiliza a física do personagem no local
+                    task.wait(0.5) -- Tempo para estabilizar a física do avatar no local
                 end
                 
-                -- PASSO 3: Clica na bomba e ESPERA o inventário atingir o valor do Slider
+                -- PASSO 3: Clica na bomba e monitora o inventário até atingir a meta definida no Slider
                 if clickDetector then
                     local tentativas = 0
-                    -- O loop continua clicando até você realmente possuir a quantidade definida no Slider (ou até atingir o limite seguro)
                     while detonaMassaAtivo and contarBombasNoInventario() < intensidadeSpam and tentativas < (intensidadeSpam * 3) do
                         fireclickdetector(clickDetector)
                         tentativas = tentativas + 1
-                        RunService.Heartbeat:Wait() -- Evita travamento e sincroniza os cliques com o servidor
+                        RunService.Heartbeat:Wait() -- Sincroniza cliques rápidos sem travar o jogo
                     end
                 end
                 
-                -- PASSO 4: SÓ RETORNA AGORA (Com o inventário cheio de bombas de verdade!)
+                -- PASSO 4: Retorna o jogador para a posição inicial (Só após o inventário estar cheio)
                 rootPart.CFrame = posicaoOriginal
                 task.wait(0.3)
                 
-                -- PASSO 5: Monitora o clique na tela para despejar TODAS as bombas de uma vez só
+                -- PASSO 5: Habilita a colocação total das bombas ao clicar ou tocar na tela
                 cliqueConexao = Mouse.Button1Down:Connect(function()
                     if not detonaMassaAtivo then return end
                     
@@ -2007,30 +2006,39 @@ Lag:AddToggle({
                     local BlowRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Blo1wBomb1sServe1r")
                     
                     if PlaceRemote and BlowRemote then
-                        -- Dispara o lote inteiro em threads paralelas separadas instantaneamente
                         task.spawn(function()
-                            -- Coloca a quantidade exata selecionada no Slider
-                            for i = 1, intensidadeSpam do
+                            -- Descobre a quantidade de bombas válidas coletadas na mochila
+                            local bombasParaColocar = contarBombasNoInventario()
+                            if bombasParaColocar == 0 then return end
+                            
+                            -- Envia todo o lote de uma vez utilizando micro-offsets de dispersão espacial
+                            for i = 1, bombasParaColocar do
                                 if not detonaMassaAtivo then break end
                                 
-                                -- Cria cada bomba em paralelo para o InvokeServer não reter/travar o código
+                                -- Desvia a posição em milímetros para o anti-exploit do mapa aceitar todas juntas
+                                local variacaoX = math.random(-5, 5) / 100
+                                local variacaoZ = math.random(-5, 5) / 100
+                                local posicaoFinal = alvoPosicao.Position + Vector3.new(variacaoX, 0, variacaoZ)
+                                
+                                -- Roda em threads assíncronas paralelas para burlar o delay do InvokeServer
                                 task.spawn(function()
-                                    PlaceRemote:InvokeServer("Bomb", "Place", alvoPosicao.Position)
+                                    PlaceRemote:InvokeServer("Bomb", "Place", posicaoFinal)
                                 end)
                             end
                             
-                            -- Pequeno tempo para o servidor registrar todas as instâncias físicas tocando o chão
-                            task.wait(0.15)
+                            -- Pequena janela de milissegundos para o servidor processar a colisão das entidades
+                            task.wait(0.12)
                             
-                            -- PASSO 6: Executa a detonação em massa passando a assinatura necessária pelo Brookhaven
-                            BlowRemote:FireServer("Bomb" .. LocalPlayer.Name)
-                            BlowRemote:FireServer("Bomb1NCD3NT") -- Disparo alternativo redundante de garantia
+                            -- PASSO 6: Detonação unificada usando o remote e argumentos específicos do Brookhaven
+                            local argBomba = "Bomb" .. LocalPlayer.Name
+                            BlowRemote:FireServer(argBomba)
+                            BlowRemote:FireServer("Bomb1NCD3NT")
                         end)
                     end
                 end)
             end
         else
-            -- Limpa as conexões e interrompe loops ao desligar o Toggle
+            -- Limpeza completa de conexões ao desligar o Toggle para restaurar os cliques padrões
             if cliqueConexao then
                 cliqueConexao:Disconnect()
                 cliqueConexao = nil
