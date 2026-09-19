@@ -96,6 +96,8 @@ TabBrook:AddToggle({"Céu Preto Perfeito (Cartola Style)", false, function(State
                 "RightUpperLeg", "RightLowerLeg", "RightFoot"
             }
             
+            if conexaoInvisivel then conexaoInvisivel:Disconnect() end -- Previne bugs de conexões duplicadas
+            
             conexaoInvisivel = RunService.RenderStepped:Connect(function()
                 if LocalPlayer.Character then
                     for _, nomeMembro in ipairs(membrosParaEsconder) do
@@ -142,7 +144,7 @@ TabBrook:AddToggle({"Céu Preto Perfeito (Cartola Style)", false, function(State
             RedzLibrary:SetNotification({"MagN Hub", "Céu e avatar restaurados.", 3})
         end
     end
-end})
+end}) -- O parêntese e a chave fecham perfeitamente o AddToggle aqui no final
 
 local BossScript = Window:MakeTab({Title = "BruteScripts", Icon = "rbxassetid://114476297734336" })
 
