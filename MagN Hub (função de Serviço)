@@ -1446,14 +1446,14 @@ local function ExecuteKillProp(target)
     if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then return end
 
     task.spawn(function()
-        -- 1. LIMPEZA INICIAL (Usando o seu Remote exato de limpeza)
+        -- 1. LIMPEZA INICIAL DE FERRAMENTAS
         local RemoteLimpar = ReplicatedStorage.RE:FindFirstChild("1Clea1rTool1s")
         if RemoteLimpar then
             RemoteLimpar:FireServer("ClearAllTools")
         end
         task.wait(0.01)
 
-        -- 2. Pega a ferramenta PropMaker do catálogo
+        -- 2. Pega a ferramenta oficial PropMaker do jogo
         local argsGet = {
             [1] = "PickingTools",
             [2] = "PropMaker"
@@ -1467,48 +1467,64 @@ local function ExecuteKillProp(target)
         end
         task.wait(0.05)
 
-        -- 3. Valida o seu controle do PropMaker que fica na mão do personagem
+        -- Valida o controle de ativação da ferramenta
         local Tool_PropMake = char:FindFirstChild("PropMaker") and char.PropMaker:FindFirstChild("Tool_PropMake")
         if not Tool_PropMake then return end
 
-        -- Invoca o Prop das Cadeiras de Espera (Waiting Chairs)
-        local nomePropChairs = "WaitingChairs"
-        Tool_PropMake:FireServer("PlaceProp", nomePropChairs, root.CFrame) 
-        task.wait(0.1)
+        -- 3. Dispara o spawn do prop de assentos brancos (WaitingChairs ou similar)
+        Tool_PropMake:FireServer("SpawnProp", "WaitingChairs") 
+        task.wait(0.15)
 
-        -- 4. Localiza o modelo físico das Cadeiras gerado no mapa
+        -- 4. RASTREAMENTO DINÂMICO DO REMOTE DO SEU REMOTESPY
+        -- Em vez de travar no index [16], o script busca de forma inteligente na pasta WorkspaceCom
+        local RemoteCFrameReal = nil
+        local pastaWorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
+        
+        if pastaWorkspaceCom then
+            -- Varre todas as subpastas de itens (ex: 001_TrafficCones, 002_WaitingChairs, etc.)
+            for _, subPasta in ipairs(pastaWorkspaceCom:GetChildren()) do
+                -- Procura em cada item da lista pelo Remote "SetCurrentCFrame"
+                for _, item in ipairs(subPasta:GetChildren()) do
+                    if item:FindFirstChild("SetCurrentCFrame") then
+                        RemoteCFrameReal = item.SetCurrentCFrame
+                        break
+                    end
+                end
+                if RemoteCFrameReal then break end
+            end
+        end
+
+        -- Se o script não achar o Remote dinamicamente, usa o caminho exato do seu log como Fallback
+        if not RemoteCFrameReal and pastaWorkspaceCom then
+            pcall(function()
+                local pastaCones = pastaWorkspaceCom:FindFirstChild("001_TrafficCones")
+                local itensCones = pastaCones and pastaCones:GetChildren()
+                if itensCones and itensCones[16] then
+                    RemoteCFrameReal = itensCones[16]:FindFirstChild("SetCurrentCFrame")
+                end
+            end)
+        end
+
+        if not RemoteCFrameReal then return end -- Encerra se a rede do prop não foi achada
+
+        -- Localiza o modelo do prop na Workspace para desativar colisões locais
         local meuProp = workspace:FindFirstChild(LocalPlayer.Name .. "Prop") 
             or workspace:FindFirstChild("Props") and workspace.Props:FindFirstChild(LocalPlayer.Name)
-            or workspace:FindFirstChild(nomePropChairs)
             
-        if not meuProp then
-            for _, obj in pairs(workspace:GetChildren()) do
-                if (obj.Name == "WaitingChairs" or obj.Name == "Prop") and obj:FindFirstChildWhichIsA("Seat", true) then
-                    meuProp = obj
-                    break
+        if meuProp then
+            for _, part in pairs(meuProp:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
                 end
             end
         end
 
-        if not meuProp then return end
-
-        local seatPart = meuProp:FindFirstChildOfClass("Seat") or meuProp:FindFirstChildWhichIsA("Seat", true)
-        local mainPart = meuProp.PrimaryPart or meuProp:FindFirstChild("Handle") or seatPart
-        if not seatPart or not mainPart then return end
-
-        -- Desativa as colisões para as cadeiras entrarem rente ao corpo do alvo sem travar
-        for _, part in pairs(meuProp:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-
         local angle = 0
-        -- 5. LOOP DE PERSEGUIÇÃO: Usa o Prediction (/1.5) e atualiza via CFrame e o seu Remote
-        while target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and meuProp and meuProp.Parent do
+        -- 5. LOOP DE PERSEGUIÇÃO: Atualiza a posição via CFrame e dispara o seu Remote de rede real
+        while target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") do
             local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
             
-            -- Interrompe o loop se o alvo sentar, morrer ou se o Toggle geral for desligado
+            -- Interrompe o loop se o alvo sentar, morrer ou se o botão geral desligar
             if not currentHum or currentHum.Sit or currentHum.Health <= 0 or not flingActive then break end
             
             angle = (angle + 50) % 360
@@ -1517,56 +1533,43 @@ local function ExecuteKillProp(target)
             local pos_y = target.Character.HumanoidRootPart.Position.Y
             local pos_z = target.Character.HumanoidRootPart.Position.Z
             
-            -- Cálculo de compensação de velocidade do alvo
+            -- Cálculo de compensação de movimento (Prediction / 1.5)
             local alvoVelocidade = target.Character.HumanoidRootPart.AssemblyLinearVelocity or target.Character.HumanoidRootPart.Velocity
             pos_x = pos_x + (alvoVelocidade.X / 1.5)
             pos_y = pos_y + (alvoVelocidade.Y / 1.5)
             pos_z = pos_z + (alvoVelocidade.Z / 1.5)
             
-            -- Posiciona as cadeiras brancas rodando exatamente abaixo das pernas do alvo
+            -- Calcula a posição rotacionando rente às pernas do alvo
             local novaPosicao = CFrame.new(pos_x, pos_y - 1, pos_z) * CFrame.Angles(0, math.rad(angle), 0)
             
-            if meuProp.PrimaryPart then
-                meuProp:SetPrimaryPartCFrame(novaPosicao)
-            else
-                mainPart.CFrame = novaPosicao
-            end
+            -- DISPARA O SEU REMOTE DO REMOTESPY (Atualiza o prop para o servidor seguir o alvo)
+            RemoteCFrameReal:FireServer(novaPosicao)
             
-            -- Sincroniza a posição do prop usando o seu Remote do PropMaker
-            Tool_PropMake:FireServer("SetCFrame", novaPosicao)
             task.wait()
         end
         
         -- =============================================================================
-        -- [MECÂNICA DE EXECUÇÃO: TELEPORTE FINAL PARA 1, -889, -1 E DESTRUIÇÃO SEM RETORNO]
+        -- [MECÂNICA DE EXECUÇÃO: TELEPORTE FINAL PARA 1, -889, -1 E DESTRUIÇÃO BRUTA]
         -- =============================================================================
-        if tHum and tHum.Sit and meuProp then
+        if tHum and tHum.Sit and RemoteCFrameReal then
             task.wait(0.01)
 
-            -- Coordenada subterrânea que você especificou
+            -- Coordenada subterrânea profunda solicitada
             local coordenadaFinal = CFrame.new(1, -889, -1)
             
-            -- Move as cadeiras com a vítima presa nelas para o local final
-            if meuProp.PrimaryPart then
-                meuProp:SetPrimaryPartCFrame(coordenadaFinal)
-            else
-                mainPart.CFrame = coordenadaFinal
-            end
-            
-            -- Confirma a coordenada final para a rede através do seu remote
-            Tool_PropMake:FireServer("SetCFrame", coordenadaFinal)
-            task.wait(0.05)
+            -- Força o teletransporte final do prop com o alvo acoplado usando seu remote
+            RemoteCFrameReal:FireServer(coordenadaFinal)
+            task.wait(0.05) -- Tempo para processar o empurrão de rede
 
-            -- APAGA COMPLETAMENTE AS CADEIRAS (Isso derruba o target de vez no void)
-            meuProp:Destroy()
+            -- Deleta o prop localmente
+            if meuProp then meuProp:Destroy() end
             
-            -- Dispara o seu Remote de limpeza para apagar os rastros do servidor
+            -- Aciona o seu remote de limpeza geral de ferramentas para apagar rastros do mapa
             if RemoteLimpar then
                 RemoteLimpar:FireServer("ClearAllTools")
             end
             
-            -- FIM DO SCRIPT: Conforme solicitado, não há blocos de retorno (Recall).
-            -- A execução é interrompida e você permanece na posição final.
+            -- FIM DO SCRIPT: O fluxo encerra aqui, sem comandos de recall para manter sua posição travada.
         end
     end)
 end
