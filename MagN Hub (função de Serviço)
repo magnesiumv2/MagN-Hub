@@ -2516,6 +2516,65 @@ House:AddToggle({
     end
 })
 
+House:AddButton({
+    Name = "Bater em Todas as Portas",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local Character = LocalPlayer.Character
+        
+        -- Verifica se o personagem e a parte principal dele existem
+        if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
+        
+        -- 1. Salva a posição de onde você clicou no botão
+        local posicaoOriginal = Character.HumanoidRootPart.CFrame
+        local lots = workspace:FindFirstChild("001_Lots")
+        
+        if lots then
+            -- 2. Varre todos os lotes do mapa
+            for _, lote in pairs(lots:GetChildren()) do
+                -- Verifica o caminho exato solicitado: Player House -> HousePickedByPlayer -> HouseModel
+                local housePicked = lote:FindFirstChild("HousePickedByPlayer")
+                if housePicked then
+                    local houseModel = housePicked:FindFirstChild("HouseModel")
+                    if houseModel then
+                        -- Acessa a pasta Components e a pasta de portas
+                        local components = houseModel:FindFirstChild("Components")
+                        local doors = components and components:FindFirstChild("001_HouseDoors")
+                        local frontDoor = doors and doors:FindFirstChild("HouseDoorFront")
+                        local knock = frontDoor and frontDoor:FindFirstChild("Knock")
+                        
+                        if knock then
+                            -- Pega o segundo filho conforme especificado: Knock:GetChildren()[2]
+                            local filhosKnock = knock:GetChildren()
+                            local alvo = filhosKnock[2]
+                            
+                            -- Se o segundo filho existir e tiver um ClickDetector nele
+                            if alvo and alvo:FindFirstChild("ClickDetector") then
+                                local clickDetector = alvo.ClickDetector
+                                
+                                -- Teleporta o jogador para a porta da casa atual
+                                Character.HumanoidRootPart.CFrame = alvo.CFrame + Vector3.new(0, 2, 0)
+                                task.wait(0.1) -- Pequena pausa para o jogo registrar o teleporte
+                                
+                                -- Aciona o ClickDetector (usa fireclickdetector fornecido pelo executor)
+                                if fireclickdetector then
+                                    fireclickdetector(clickDetector)
+                                end
+                                
+                                task.wait(0.05) -- Curta pausa antes de ir para a próxima casa
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- 3. Teleporta você de volta para onde estava quando ativou a função
+        Character.HumanoidRootPart.CFrame = posicaoOriginal
+    end
+})
+
 local Avatar = Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://4483345998" })
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
