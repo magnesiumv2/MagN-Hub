@@ -1428,6 +1428,138 @@ local function ExecuteBringCouch(target)
     end)
 end
 
+local function ExecuteKillProp(target)
+    local players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local LocalPlayer = players.LocalPlayer
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if not root or not hum or not target or not target.Character then return end
+
+    local tRoot = target.Character:FindFirstChild("Head")
+    local tHum = target.Character:FindFirstChildOfClass("Humanoid")
+    if not tRoot or not tHum then return end
+
+    -- Se o alvo já estiver sentado antes de iniciar, cancela
+    if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then return end
+
+    task.spawn(function()
+        -- 1. Limpa inventários e ferramentas antigas
+        local argsClean = {"ClearAllTools"}
+        ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer(unpack(argsClean))
+        task.wait(0.01)
+
+        -- 2. Pega a ferramenta oficial PropMaker
+        local argsGet = {
+            [1] = "PickingTools",
+            [2] = "PropMaker"
+        }
+        ReplicatedStorage.RE:FindFirstChild("1Too1l"):InvokeServer(unpack(argsGet))
+        task.wait(0.05)
+
+        local propMakerTool = LocalPlayer.Backpack:FindFirstChild("PropMaker")
+        if propMakerTool then
+            propMakerTool.Parent = char
+        end
+        task.wait(0.05)
+
+        -- 3. Dispara o Remote para SPAWNAR o Prop Branco com múltiplos lugares
+        -- Substitua "WhiteMultiSeatProp" pelo argumento exato do banco/prop branco que você usa
+        local RemoteProp = ReplicatedStorage.RE:FindFirstChild("PropMakerRemote") or ReplicatedStorage.RE:FindFirstChild("1Too1l")
+        if RemoteProp then
+            RemoteProp:FireServer("SpawnProp", "WhiteMultiSeatProp") 
+        end
+        task.wait(0.1) -- Tempo para o servidor instanciar o prop no mapa
+
+        -- 4. Localiza o Prop criado pelo PropMaker na Workspace
+        local meuProp = workspace:FindFirstChild(LocalPlayer.Name .. "Prop") 
+            or workspace:FindFirstChild("Props") and workspace.Props:FindFirstChild(LocalPlayer.Name)
+            
+        if not meuProp then
+            -- Fallback de busca geral se o jogo usar nome genérico
+            for _, obj in pairs(workspace:GetChildren()) do
+                if obj:IsA("Model") and obj:FindFirstChildWhichIsA("Seat", true) and not players:GetPlayerFromCharacter(obj) then
+                    meuProp = obj
+                    break
+                end
+            end
+        end
+
+        if not meuProp then return end -- Se falhar no spawn, encerra silenciosamente
+
+        local seatPart = meuProp:FindFirstChildOfClass("Seat") or meuProp:FindFirstChildWhichIsA("Seat", true)
+        local mainPart = meuProp.PrimaryPart or meuProp:FindFirstChild("Handle") or seatPart
+        
+        if not seatPart or not mainPart then return end
+
+        -- Remove colisão para o prop entrar embaixo da terra/pernas do alvo sem travar
+        for _, part in pairs(meuProp:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+
+        local angle = 0
+        -- 5. LOOP DE PERSEGUIÇÃO: Usa remotes/CFrame para esfregar o prop no alvo
+        while target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and meuProp and meuProp.Parent do
+            local currentHum = target.Character:FindFirstChildOfClass("Humanoid")
+            
+            -- Para o loop se o alvo sentar, se morrer ou se o Toggle geral desligar
+            if not currentHum or currentHum.Sit or currentHum.Health <= 0 or not flingActive then break end
+            
+            angle = (angle + 50) % 360
+
+            local pos_x = target.Character.HumanoidRootPart.Position.X
+            local pos_y = target.Character.HumanoidRootPart.Position.Y
+            local pos_z = target.Character.HumanoidRootPart.Position.Z
+            
+            -- CÁLCULO DE COMPENSAÇÃO DE MOVIMENTO (PREDICTION)
+            local alvoVelocidade = target.Character.HumanoidRootPart.AssemblyLinearVelocity or target.Character.HumanoidRootPart.Velocity
+            pos_x = pos_x + (alvoVelocidade.X / 1.5)
+            pos_y = pos_y + (alvoVelocidade.Y / 1.5)
+            pos_z = pos_z + (alvoVelocidade.Z / 1.5)
+            
+            -- Usa os CFrames do PropMaker para mover de forma contínua rente ao chão (-1)
+            local novaPosicao = CFrame.new(pos_x, pos_y - 1, pos_z) * CFrame.Angles(0, math.rad(angle), 0)
+            
+            if meuProp.PrimaryPart then
+                meuProp:SetPrimaryPartCFrame(novaPosicao)
+            else
+                mainPart.CFrame = novaPosicao
+            end
+            task.wait()
+        end
+        
+        -- =============================================================================
+        -- [MECÂNICA DE EXECUÇÃO: TELEPORTE PARA 1, -889, -1 E APAGAR DE VEZ]
+        -- =============================================================================
+        if tHum and tHum.Sit and meuProp then
+            task.wait(0.01)
+
+            -- Teleporta o Prop (carregando o alvo preso nele) para a coordenada exata pedida
+            local coordenadaFinal = CFrame.new(1, -889, -1)
+            
+            if meuProp.PrimaryPart then
+                meuProp:SetPrimaryPartCFrame(coordenadaFinal)
+            else
+                mainPart.CFrame = coordenadaFinal
+            end
+            task.wait(0.05) -- Tempo físico de entrega na rede do servidor
+
+            -- APAGA COMPLETAMENTE O PROP (Isso desvincula e derruba o target no void nessa coordenada)
+            meuProp:Destroy()
+            
+            -- Aciona o remote para limpar props restantes no servidor do Brookhaven
+            ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
+            
+            -- FIM DO SCRIPT: Não há blocos de retorno (Recall) para o originalCFrame.
+            -- Você e o alvo permanecem onde a ação terminou.
+        end
+    end)
+end
+
 local function ExecuteKillCouch(target)
     local players = game:GetService("Players")
     local player = players.LocalPlayer
@@ -1572,7 +1704,7 @@ end
 Troll:AddDropdown({
     Name = "Método",
     Default = "Ball",
-    Options = {"Ball", "Couch", "Boat"},
+    Options = {"Ball", "Couch", "Boat", "Prop"},
     Callback = function(selectedOption)
         currentMethod = selectedOption
     end
@@ -1595,6 +1727,8 @@ Troll:AddButton({
                     ExecuteKillCouch(target)
                 elseif currentMethod == "Boat" then
                     print("MagN Hub: Em breve este método será compatível com esta função.")
+                elseif currentMethod == "Prop" then
+                ExecuteKillProp(target)
                 end
             else
                 warn("MagN Hub: O jogador selecionado não foi encontrado no servidor.")
