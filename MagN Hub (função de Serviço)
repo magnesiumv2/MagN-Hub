@@ -1182,7 +1182,9 @@ local function ExecuteFlingBoat(target)
     local Character = Player.Character
     local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
     local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-    local Vehicles = game.Workspace:FindFirstChild("Vehicles")
+    local Workspace = game:GetService("Workspace")
+    local Vehicles = Workspace:FindFirstChild("Vehicles")
+    local PhysicsService = game:GetService("PhysicsService")
 
     if not Humanoid or not RootPart then
         if RedzLibrary and RedzLibrary.SetNotification then
@@ -1227,63 +1229,75 @@ local function ExecuteFlingBoat(target)
         until Humanoid.SeatPart == Seat or not flingBoatAtivo
     end
 
+    if not targetPlayer or not targetPlayer.Character then
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Erro: Nenhum alvo selecionado!", 4})
+        end
+        return
+    end
+
     local TargetC = targetPlayer.Character
     local TargetRP = TargetC and TargetC:FindFirstChild("HumanoidRootPart")
     local TargetH = TargetC and TargetC:FindFirstChildOfClass("Humanoid")
 
-    -- Se o alvo estiver morto ou não carregou, sai da função para o loop geral tentar no próximo respawn
     if not TargetRP or not TargetH or TargetH.Health <= 0 then
         return 
     end
 
     local chassi = PCar.PrimaryPart or Seat
-    chassi.CanCollide = false 
+
+    -- Configuração de Colisão (Ignora você, bate no Target)
+    pcall(function()
+        PhysicsService:RegisterCollisionGroup("PlayersGroup")
+        PhysicsService:RegisterCollisionGroup("BoatGroup")
+        PhysicsService:CollisionGroupSetCollidable("PlayersGroup", "BoatGroup", false)
+        
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CollisionGroup = "PlayersGroup" end
+        end
+        for _, part in ipairs(PCar:GetDescendants()) do
+            if part:IsA("BasePart") then 
+                part.CollisionGroup = "BoatGroup"
+                part.CanCollide = true
+            end
+        end
+    end)
+
+    -- Forças físicas de rotação violenta
+    local bAV = chassi:FindFirstChild("FlingAngular") or Instance.new("BodyAngularVelocity", chassi)
+    bAV.Name = "FlingAngular"
+    bAV.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bAV.P = 150000
+
+    local bV = chassi:FindFirstChild("FlingLinear") or Instance.new("BodyVelocity", chassi)
+    bV.Name = "FlingLinear"
+    bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bV.P = 150000
 
     local angle = 0
 
-    -- Loop de colisão física com o cálculo de compensação de velocidade (Estilo Fling Couch)
+    -- Loop principal do Fling
     while flingBoatAtivo and PCar and PCar.Parent and TargetRP and TargetRP.Parent and TargetH.Health > 0 and Humanoid.SeatPart == Seat do
         game:GetService("RunService").Heartbeat:Wait()
         
-        -- Rotaciona o ângulo do barco de forma brutal
-        angle = (angle + 50) % 360
-        chassi.AssemblyAngularVelocity = Vector3.new(0, 5000, 0) 
+        angle = (angle + 90) % 360
+        bAV.AngularVelocity = Vector3.new(95000, 95000, 95000)
+        bV.Velocity = Vector3.new(math.random(-2000, 2000), math.random(-500, 500), math.random(-2000, 2000))
         
-        -- Pega a posição base atual do alvo
-        local pos_x = TargetRP.Position.X
-        local pos_y = TargetRP.Position.Y
-        local pos_z = TargetRP.Position.Z
+        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity or Vector3.new(0,0,0)
+        local pos_x = TargetRP.Position.X + (alvoVelocidade.X * 0.12)
+        local pos_y = TargetRP.Position.Y + (alvoVelocidade.Y * 0.12)
+        local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.12)
         
-        -- AJUSTE DE VELOCIDADE (PREDICTION): Lê a velocidade física do alvo e compensa dividindo por 1.5
-        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity
-        pos_x = pos_x + (alvoVelocidade.X / 1.5)
-        pos_y = pos_y + (alvoVelocidade.Y / 1.5)
-        pos_z = pos_z + (alvoVelocidade.Z / 1.5)
-        
-        -- Define offsets para alternar o impacto e esmagar o alvo
-        local posicoesTroll = {
-            Vector3.new(0, 0.5, 0),
-            Vector3.new(0, -2, 2.5),
-            Vector3.new(2.5, 0.5, -2.5),
-            Vector3.new(-2.5, -1, 2.5)
-        }
-        
-        for _, offset in ipairs(posicoesTroll) do
-            if PCar and chassi and flingBoatAtivo then
-                local rotacaoAleatoria = CFrame.Angles(
-                    math.rad(angle),
-                    math.rad(angle),
-                    math.rad(math.random(-360, 360))
-                )
-                
-                -- Teleporta o chassi aplicando o cálculo preditivo de movimento + offset + rotação
-                chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z) + offset) * rotacaoAleatoria
-                
-                -- Aplica a velocidade vetorial massiva nas propriedades nativas modernizadas do Roblox
-                chassi.AssemblyLinearVelocity = Vector3.new(math.random(-500, 500), 500, math.random(-500, 500))
-            end
+        if PCar and chassi and flingBoatAtivo then
+            local rotacaoMaluco = CFrame.Angles(math.rad(angle), math.rad(angle), math.rad(angle))
+            chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z)) * rotacaoMaluco
         end
     end
+
+    -- Limpeza das forças ao desligar o loop
+    if bAV then bAV:Destroy() end
+    if bV then bV:Destroy() end
 end
 
 local function ExecuteBringCouch(target)
