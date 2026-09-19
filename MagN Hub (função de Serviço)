@@ -54,68 +54,77 @@ InfoTab:AddButton({
 
 local GlitchSection = Window:MakeTab({ Title = "Skybox Server", Icon = "Home" })
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
--- Função auxiliar que aplica os IDs no seu personagem para esticar a textura até o céu
-local function aplicarGlitchSkybox(shirtId, pantsId, torsoId)
-    local character = LocalPlayer.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+-- Adicione este Toggle na aba visual ou de trollagem do seu MagN Hub
+GlitchSection:AddToggle({
+   Name = "Skybox black",
+   Callback = function(state)
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Character = LocalPlayer.Character
     
-    if humanoid then
-        local description = Players:GetHumanoidDescriptionFromUserId(LocalPlayer.UserId)
-        
-        description.Shirt = shirtId or 0
-        description.Pants = pantsId or 0
-        
-        -- ID do torso clássico que quebra a escala física do avatar no Brookhaven
-        description.Torso = torsoId or 6400494 
-        description.LeftArm = torsoId or 6400494
-        description.RightArm = torsoId or 6400494
-        
-        humanoid:ApplyDescription(description)
-    end
-end
-
--- Função para limpar o glitch e fazer você voltar ao seu corpo normal
-local function removerGlitchSkybox()
-    local character = LocalPlayer.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        local normalDesc = Players:GetHumanoidDescriptionFromUserId(LocalPlayer.UserId)
-        humanoid:ApplyDescription(normalDesc)
-    end
-end
-
--- ============================================================
--- OPÇÕES DE TOGGLES PARA A SUA SEÇÃO GLITCHSECTION:
--- ============================================================
-
--- Opção 1: Céu do Espaço / Galáxia Esticada
-GlitchSection:AddToggle({
-    Name = "Céu Galáxia / Espaço (Global)",
-    Default = false,
-    Callback = function(v)
-        if v then
-            aplicarGlitchSkybox(8806553258, 8806554521, 6400494)
-        else
-            removerGlitchSkybox()
+    if State then
+        -------------------------------------------------------------------
+        -- 1. ATIVAR O SKYBOX HUMANO
+        -------------------------------------------------------------------
+        if Character and Character:FindFirstChild("Humanoid") then
+            local Humanoid = Character.Humanoid
+            
+            -- Usa o sistema nativo do Brookhaven para equipar roupas/corpos específicos por ID
+            -- (Substitua as IDs abaixo pelas IDs do corpo/roupa que você deseja que estique)
+            local IdRoupaCursed = 000000000 -- Insira a ID da camisa/calça 2D aqui
+            
+            -- Simulando o envio de ID para a mecânica do Brookhaven (Remotes do Jogo)
+            -- Nota: O Brookhaven usa RemoteEvents para atualizar roupas e pacotes de avatar
+            pcall(function()
+                game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization"):FireServer("Shirt", IdRoupaCursed)
+                game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization"):FireServer("Pants", IdRoupaCursed)
+            end)
+            
+            -- 2. MECÂNICA DE ESTICAR: Altera os valores de escala do corpo (R15)
+            -- Isso faz as partes do corpo e as roupas 2D expandirem como um quadrado gigante
+            local BodySizes = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
+            for _, scaleName in ipairs(BodySizes) do
+                local scaleObj = Humanoid:FindFirstChild(scaleName)
+                if scaleObj and scaleObj:IsA("NumberValue") then
+                    -- Multiplica o tamanho para criar o bloco gigante (ex: 50 vezes o tamanho)
+                    scaleObj.Value = 50 
+                end
+            end
+            
+            -- 3. ANIMAÇÃO (Opcional)
+            -- Força uma animação estática ou de Glitch para travar o corpo no formato correto
+            -- local Animation = Instance.new("Animation")
+            -- Animation.AnimationId = "rbxassetid://ID_DA_ANIMACAO_TRAVADA"
+            -- local Track = Humanoid:LoadAnimation(Animation)
+            -- Track:Play()
+            
+            RedzLibrary:SetNotification({"MagN Hub", "Skybox Humano Ativado! Todos estão vendo.", 4})
+        end
+    else
+        -------------------------------------------------------------------
+        -- 2. DESATIVAR E RESTAURAR O AVATAR
+        -------------------------------------------------------------------
+        if Character and Character:FindFirstChild("Humanoid") then
+            local Humanoid = Character.Humanoid
+            
+            -- Retorna o tamanho do personagem ao padrão normal (R15 = 1)
+            local BodySizes = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
+            for _, scaleName in ipairs(BodySizes) do
+                local scaleObj = Humanoid:FindFirstChild(scaleName)
+                if scaleObj and scaleObj:IsA("NumberValue") then
+                    scaleObj.Value = 1
+                end
+            end
+            
+            -- Reseta o avatar usando o próprio controle do Brookhaven
+            pcall(function()
+                game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization"):FireServer("ResetAvatar")
+            end)
+            
+            RedzLibrary:SetNotification({"MagN Hub", "Avatar restaurado ao normal.", 3})
         end
     end
-})
-
--- Opção 2: Céu Matrix / Código Verde Neon
-GlitchSection:AddToggle({
-    Name = "Céu Código Matrix (Global)",
-    Default = false,
-    Callback = function(v)
-        if v then
-            aplicarGlitchSkybox(6250785465, 6250785465, 6400494)
-        else
-            removerGlitchSkybox()
-        end
-    end
-})
+end})
 
 local BossScript = Window:MakeTab({Title = "BruteScripts", Icon = "rbxassetid://114476297734336" })
 
