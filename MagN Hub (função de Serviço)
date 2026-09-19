@@ -1530,7 +1530,7 @@ local function ExecuteKillCouch(target)
             task.wait(0.01)
 
             -- Teleporta tudo junto para a sua coordenada solicitada
-            local coordenadaEspecifica = CFrame.new(1146, -552, 201)
+            local coordenadaEspecifica = CFrame.new(1, -332, -1)
             root.CFrame = coordenadaEspecifica
             handle.CFrame = coordenadaEspecifica
             task.wait(0.05) 
