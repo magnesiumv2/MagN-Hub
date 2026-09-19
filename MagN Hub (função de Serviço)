@@ -2139,6 +2139,45 @@ Lag:AddToggle({
     end
 })
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+local lagServerBombaAtivo = false
+
+-- Adicione esta opção na sua aba/seção Lag existente:
+Lag:AddToggle({
+    Name = "Lag Server por Bomba (Estresse)",
+    Default = false,
+    Callback = function(v)
+        lagServerBombaAtivo = v
+        
+        if lagServerBombaAtivo then
+            -- Cria uma thread paralela para rodar o estresse sem congelar a sua tela
+            task.spawn(function()
+                local BlowRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Blo1wBomb1sServe1r")
+                
+                -- Assinaturas de String exigidas pela validação do Brookhaven
+                local argNormal = "Bomb" .. LocalPlayer.Name
+                local argGeral = "Bomb1NCD3NT"
+                
+                while lagServerBombaAtivo and BlowRemote do
+                    -- Envia lotes simultâneos por quadro físico do motor do jogo
+                    for i = 1, 30 do
+                        if not lagServerBombaAtivo then break end
+                        BlowRemote:FireServer(argNormal)
+                        BlowRemote:FireServer(argGeral)
+                    end
+                    
+                    -- Sincronização obrigatória: Mantém o cliente operando normalmente enquanto o servidor acumula o ping
+                    RunService.Heartbeat:Wait()
+                end
+            end)
+        end
+    end
+})
+
 local House = Window:MakeTab({ Title = "Casas", Icon = "home" })
 
 local RunService = game:GetService("RunService")
@@ -2195,51 +2234,84 @@ House:AddToggle({
 -- =============================================================================
 -- 2. AUTO ROUBO DE COFRES - BOTÃO
 -- =============================================================================
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- ============================================================
+-- OPÇÕES DE BOTÕES PARA A SUA SEÇÃO HOUSE (HOUSE:ADDBUTTON):
+-- ============================================================
+
+-- Opção 1: Rota Automática para Roubar o Banco Principal
 House:AddButton({
-    Name = "Auto Roubo de Cofres",
+    Name = "Roubar Cofre do Banco (Auto)",
     Callback = function()
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
         
-        task.spawn(function()
-            local originalCFrame = root.CFrame
-            local cofresRoubados = 0
+        if rootPart then
+            -- Salva onde você está para poder voltar depois do roubo
+            local posicaoAntesDoCrime = rootPart.CFrame
             
-            -- Varre todos os modelos do mapa procurando cofres ("Safe")
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj.Name == "Safe" and obj.Parent:FindFirstChild("BombPlace") then
-                    pcall(function()
-                        -- 1. Teleporta você para dentro da sala do cofre
-                        root.CFrame = obj.CFrame * CFrame.new(0, 0, 3)
-                        task.wait(0.2)
-                        
-                        -- 2. Dispara o RemoteEvent nativo do jogo para detonar o cofre
-                        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
-                        if remotes then
-                            -- Envia o sinal simulando que você colocou e detonou a C4
-                            remotes:FindFirstChild("1Plac1eBom1b"):FireServer("PlaceBomb", obj.Parent)
-                            task.wait(0.1)
-                            remotes:FindFirstChild("1Plac1eBom1b"):FireServer("DetonateBomb")
-                            task.wait(0.3) -- Aguarda a explosão abrir a porta
-                            
-                            -- 3. Clica/Ativa o dinheiro do cofre para coletar a grana
-                            local clickDetector = obj.Parent:FindFirstChildOfClass("ClickDetector") or obj:FindFirstChildOfClass("ClickDetector")
-                            if clickDetector then
-                                fireclickdetector(clickDetector)
-                                cofresRoubados = cofresRoubados + 1
-                            end
-                        end
-                        task.wait(0.2)
-                    end)
+            -- 1. Teleporta para a frente do cofre do banco (Coordenadas clássicas do cofre)
+            rootPart.CFrame = CFrame.new(62, -10, 25) 
+            task.wait(0.5)
+            
+            -- 2. Pega e planta a Bomba através do Remote de ferramentas
+            local ToolRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Too1l")
+            if ToolRemote then
+                ToolRemote:InvokeServer("Bomb", "Place", Vector3.new(62, -10, 27)) -- Coloca rente à porta
+                task.wait(0.3)
+                
+                -- Dispara o remote exato de detonação que configuramos no seu Hub
+                local BlowRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1Blo1wBomb1sServe1r")
+                if BlowRemote then
+                    BlowRemote:FireServer("Bomb" .. LocalPlayer.Name)
+                    BlowRemote:FireServer("Bomb1NCD3NT")
                 end
             end
             
-            -- Retorna em segurança para onde você estava
-            root.Velocity = Vector3.zero
-            root.CFrame = originalCFrame
-            print("MagN Hub: Roubo finalizado! " .. cofresRoubados .. " cofres esvaziados.")
-        end)
+            -- 3. Aguarda a explosão, entra e limpa o cofre
+            task.wait(0.5)
+            rootPart.CFrame = CFrame.new(62, -10, 30) -- Move para dentro da sala das notas
+            task.wait(1) -- Tempo simulado para coletar a grana
+            
+            -- 4. Fuga: Retorna o jogador em segurança para onde ele estava
+            rootPart.CFrame = posicaoAntesDoCrime
+        end
+    end
+})
+
+-- Opção 2: Teleporte direto para o Cofre de qualquer Casa ativa do mapa
+House:AddButton({
+    Name = "Teleportar ao Cofre de uma Casa Ativa",
+    Callback = function()
+        -- Vasculha os lotes/casas gerados na Workspace
+        local pastaCasas = Workspace:FindFirstChild("Houses") or Workspace:FindFirstChild("Lotes", true) or Workspace:FindFirstChild("PlayerHouses", true)
+        local teleportou = false
+        
+        if pastaCasas then
+            for _, lote in pairs(pastaCasas:GetChildren()) do
+                -- Localiza o cofre de forma recursiva dentro de qualquer residência ocupada
+                local cofreCasa = lote:FindFirstChild("Safe", true) or lote:FindFirstChild("Cofre", true)
+                if cofreCasa and cofreCasa:IsA("BasePart") then
+                    local character = LocalPlayer.Character
+                    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+                    if rootPart then
+                        -- Teleporta você colado no cofre da propriedade
+                        rootPart.CFrame = cofreCasa.CFrame + Vector3.new(0, 2, 2)
+                        teleportou = true
+                        break -- Teleporta para a primeira casa com cofre ativo que encontrar
+                    end
+                end
+            end
+        end
+        
+        if not teleportou then
+            warn("Nenhuma casa com cofre ativo foi encontrada no servidor neste momento.")
+        end
     end
 })
 
