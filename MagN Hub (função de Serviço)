@@ -81,13 +81,7 @@ GlitchSection:AddToggle({
                         Remote:FireServer("Shirt", CamisaPretaID)
                         Remote:FireServer("Pants", CamisaPretaID)
                     end
-                 pcall(function()
-                    if Remote then
-                        Remote:FireServer("WearPack", TorsoEsticavelID)
-                        Remote:FireServer("Shirt", CamisaPretaID)
-                        Remote:FireServer("Pants", CamisaPretaID)
-                    end
-                end)
+                end) -- Fechamento correto do pcall
                 
                 -- 2. Estica o torso ao limite (Multiplicador de Escala R15)
                 local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
@@ -119,7 +113,7 @@ GlitchSection:AddToggle({
                     end
                 end)
                 
-                -- Notificação usando a Redz Library padrão
+                -- Notificação usando o RedzLibrary
                 if RedzLibrary and RedzLibrary.SetNotification then
                     RedzLibrary:SetNotification({"MagN Hub", "Céu Preto Ativado!", 4})
                 end
@@ -159,7 +153,7 @@ GlitchSection:AddToggle({
             end
         end
     end
-}) -- Fechamento exato da tabela do GlitchSection:AddToggle
+})
 
 local BossScript = Window:MakeTab({Title = "BruteScripts", Icon = "rbxassetid://114476297734336" })
 
