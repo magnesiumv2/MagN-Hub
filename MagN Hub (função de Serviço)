@@ -2282,6 +2282,54 @@ Lag:AddButton({
     end
 })
 
+local spammingTools = false
+
+Lag:AddToggle({
+    Name = "Equip Tool Spam (Glitched Sound)",
+    Default = false,
+    Callback = function(State)
+        spammingTools = State
+        
+        if State then
+            local Players = game:GetService("Players")
+            local LocalPlayer = Players.LocalPlayer
+            
+            -- Executa o loop em uma thread separada para não travar o Hub
+            task.spawn(function()
+                while spammingTools do
+                    local Character = LocalPlayer.Character
+                    local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+                    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+                    
+                    if Character and Backpack and Humanoid then
+                        -- Procura por QUALQUER ferramenta que esteja na mochila para fazer o spam
+                        -- Dica: Funciona melhor se você usar o "Pegar Todas as Ferramentas" antes!
+                        local tool = Backpack:FindFirstChildOfClass("Tool")
+                        
+                        if tool then
+                            -- Equipar a ferramenta no personagem
+                            Humanoid:EquipTool(tool)
+                            task.wait() -- Delay mínimo para o servidor registrar o som
+                            
+                            -- Desequipar de volta para a mochila
+                            Humanoid:UnequipTools()
+                        end
+                    end
+                    task.wait() -- Pequena pausa para evitar que o seu próprio jogo caia
+                end
+            end)
+            
+            if RedzLibrary and RedzLibrary.SetNotification then
+                RedzLibrary:SetNotification({"MagN Hub", "Spam de som ativado! Use perto de outras pessoas.", 4})
+            end
+        else
+            if RedzLibrary and RedzLibrary.SetNotification then
+                RedzLibrary:SetNotification({"MagN Hub", "Spam de som desligado.", 3})
+            end
+        end
+    end
+})
+
 local House = Window:MakeTab({ Title = "Casas", Icon = "home" })
 
 local RunService = game:GetService("RunService")
