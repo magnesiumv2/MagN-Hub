@@ -1174,155 +1174,116 @@ local function ExecuteFlingCouch(target, originalCFrame)
     end
 end
 
--- --- MÉTODO 3: FLING BOAT (Spawn único garantido com loop interno de foco) ---
-local function ExecuteFlingBoat(target, originalCFrame)
-    local players = game:GetService("Players")
-    local player = players.LocalPlayer
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
+-- ===================================================================
+-- FUNÇÃO DO FLING BOAT COM PREVISÃO DE MOVIMENTO (PREDICTION)
+-- ===================================================================
+local function ExecuteFlingBoat(target)
+    local Player = game.Players.LocalPlayer
+    local Character = Player.Character
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+    local Vehicles = game.Workspace:FindFirstChild("Vehicles")
 
-    -- Enquanto o Toggle geral (flingActive) estiver ligado, monitora o alvo continuamente
-    while flingActive and target and target.Parent == players do
-        char = player.Character
-        root = char and char:FindFirstChild("HumanoidRootPart")
-        hum = char and char:FindFirstChildOfClass("Humanoid")
-
-        if not root or not hum then return end
-
-        -- Verifica se o alvo está vivo e válido para iniciar o round de ataque
-        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-            local troot = target.Character.HumanoidRootPart
-            local thum = target.Character:FindFirstChildOfClass("Humanoid")
-            
-            -- [VERIFICAÇÃO DE SPAWN ÚNICO]: Procura se você já tem um barco criado no mapa
-            local boat = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
-            local seat = boat and boat:FindFirstChild("VehicleSeat")
-
-            -- Se o barco NÃO existe, vai até a doca e cria UMA vez
-            if not boat or not seat then
-                root.CFrame = CFrame.new(1754, -2, 58)
-                task.wait(0.2) -- Aguarda carregar o mapa local da doca
-
-                game:GetService("ReplicatedStorage"):WaitForChild("RE"):WaitForChild("1Ca1r"):FireServer("PickingBoat", "MilitaryBoatFree")
-                task.wait(0.3) -- Aguarda o servidor registrar o veículo fisicamente
-
-                boat = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
-                seat = boat and boat:FindFirstChild("VehicleSeat")
-            end
-
-            -- Se o barco foi localizado ou criado com sucesso, inicia a preparação física
-            if seat then
-                -- Garante que seu personagem está totalmente móvel
-                for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then part.Anchored = false end
-                end
-
-                -- Força você a entrar no assento do motorista
-                seat:Sit(hum)
-                task.wait(0.1) -- Tempo necessário para sincronizar a Network Ownership
-
-                -- Limpa forças antigas
-                if seat:FindFirstChild("FlingPower") then seat.FlingPower:Destroy() end
-                if root:FindFirstChild("PlayerFlingPower") then root.PlayerFlingPower:Destroy() end
-
-                -- Injeta as forças massivas no ASSENTO do barco
-                local bvSeat = Instance.new("BodyVelocity")
-                bvSeat.Name = "FlingPower"
-                bvSeat.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                bvSeat.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bvSeat.Parent = seat
-
-                -- Injeta as forças massivas no SEU PERSONAGEM (Como pretendido)
-                local bvPlayer = Instance.new("BodyVelocity")
-                bvPlayer.Name = "PlayerFlingPower"
-                bvPlayer.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                bvPlayer.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bvPlayer.Parent = root
-
-                workspace.CurrentCamera.CameraSubject = thum
-                local angle = 0
-                local atacando = true
-
-                -- Loop interno de ataque: Persegue colado na velocidade e rotação do alvo
-                while flingActive and thum.Health > 0 and target.Character and troot:IsDescendantOf(workspace) and seat:IsDescendantOf(workspace) do
-                    -- Se o alvo sentar em algo ou deslogar no meio do caminho, quebra o loop
-                    if thum.Sit then break end
-                    
-                    angle = (angle + 50) % 360
-
-                    -- Cálculo preditivo idêntico ao seu Fling Ball baseado na velocidade do alvo
-                    local pos_x = troot.Position.X + (troot.Velocity.X / 1.5)
-                    local pos_y = troot.Position.Y + (troot.Velocity.Y / 1.5)
-                    local pos_z = troot.Position.Z + (troot.Velocity.Z / 1.5)
-
-                    -- Arrasta o barco e você simultaneamente até a hitbox do alvo girando agressivo
-                    local targetCFrame = CFrame.new(pos_x, pos_y, pos_z) * CFrame.Angles(math.rad(angle), math.rad(angle), 0)
-                    seat.CFrame = targetCFrame
-                    root.CFrame = targetCFrame
-
-                    seat.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                    seat.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-                    root.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                    root.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-                    
-                    task.wait()
-                end
-
-                -- =============================================================================
-                -- [FALLECIMENTO/FLINGADO]: O Alvo Morreu ou Sumiu no Void. Inicia a Limpeza
-                -- =============================================================================
-                if bvSeat then bvSeat:Destroy() end
-                if bvPlayer then bvPlayer:Destroy() end
-                
-                -- Deleta o barco imediatamente após o ataque acabar (como pedido)
-                if boat then 
-                    pcall(function() boat:Destroy() end) 
-                end
-
-                if hum then 
-                    hum.PlatformStand = false
-                    pcall(function() hum:JumpAtCharacterHierarchy() end) -- Ejeta você do banco localmente
-                end
-
-                -- Rotina de recuperação milimétrica estável: Congela -> Descongela -> Retorna Seguro
-                if atacando and char and root and originalCFrame then
-                    for _, part in pairs(char:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored = true
-                            part.Velocity = Vector3.zero
-                            part.RotVelocity = Vector3.zero
-                        end
-                    end
-                    task.wait(0.05) -- Segura congelado por milissegundos
-                    
-                    for _, part in pairs(char:GetChildren()) do
-                        if part:IsA("BasePart") then part.Anchored = false end
-                    end
-                    task.wait(0.01)
-                    
-                    root.CFrame = originalCFrame -- Te devolve seguro para onde você ativou o Hub
-                    atacando = false
-                end
-                
-                workspace.CurrentCamera.CameraSubject = hum
-            end
-        else
-            -- Se o alvo estiver morto ou no void total esperando o re-spawn, te mantém seguro na base
-            if char and root and originalCFrame then
-                root.Velocity = Vector3.zero
-                root.RotVelocity = Vector3.zero
-                root.CFrame = originalCFrame
-            end
+    if not Humanoid or not RootPart then
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Erro: Localplayer ou personagem não encontrado!", 4})
         end
-
-        task.wait(0.5) -- Intervalo estável de checagem aguardando o alvo spawnar novamente
+        return
     end
 
-    -- --- LIMPEZA DE SEGURANÇA SE O TOGGLE FOR DESLIGADO MANUALLY ---
-    local boatClean = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name .. "Boat")
-    if boatClean then pcall(function() boatClean:Destroy() end) end
-    if hum then workspace.CurrentCamera.CameraSubject = hum end
+    -- Função interna para spawnar o barco do Brookhaven
+    local function spawnBoat()
+        RootPart.CFrame = CFrame.new(1754, -2, 58)
+        task.wait(0.4)
+        local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("1Ca1r")
+        if Remote then
+            Remote:FireServer("PickingBoat", "MilitaryBoatFree")
+        end
+        task.wait(1.0)
+        return Vehicles:FindFirstChild(Player.Name .. "Car")
+    end
+
+    local PCar = Vehicles:FindFirstChild(Player.Name .. "Car") or spawnBoat()
+    if not PCar then
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Erro: Barco não encontrado ou falha no spawn!", 4})
+        end
+        return
+    end
+
+    local Seat = PCar:FindFirstChild("Body") and PCar.Body:FindFirstChild("VehicleSeat") or PCar:FindFirstChildWhichIsA("VehicleSeat", true)
+    if not Seat then
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Erro: Assento do veículo não encontrado!", 4})
+        end
+        return
+    end
+
+    -- Senta o seu personagem no barco caso esteja em pé
+    if Humanoid.SeatPart ~= Seat then
+        repeat 
+            task.wait(0.05)
+            RootPart.CFrame = Seat.CFrame * CFrame.new(0, 1, 0)
+        until Humanoid.SeatPart == Seat or not flingBoatAtivo
+    end
+
+    local TargetC = targetPlayer.Character
+    local TargetRP = TargetC and TargetC:FindFirstChild("HumanoidRootPart")
+    local TargetH = TargetC and TargetC:FindFirstChildOfClass("Humanoid")
+
+    -- Se o alvo estiver morto ou não carregou, sai da função para o loop geral tentar no próximo respawn
+    if not TargetRP or not TargetH or TargetH.Health <= 0 then
+        return 
+    end
+
+    local chassi = PCar.PrimaryPart or Seat
+    chassi.CanCollide = false 
+
+    local angle = 0
+
+    -- Loop de colisão física com o cálculo de compensação de velocidade (Estilo Fling Couch)
+    while flingBoatAtivo and PCar and PCar.Parent and TargetRP and TargetRP.Parent and TargetH.Health > 0 and Humanoid.SeatPart == Seat do
+        game:GetService("RunService").Heartbeat:Wait()
+        
+        -- Rotaciona o ângulo do barco de forma brutal
+        angle = (angle + 50) % 360
+        chassi.AssemblyAngularVelocity = Vector3.new(0, 5000, 0) 
+        
+        -- Pega a posição base atual do alvo
+        local pos_x = TargetRP.Position.X
+        local pos_y = TargetRP.Position.Y
+        local pos_z = TargetRP.Position.Z
+        
+        -- AJUSTE DE VELOCIDADE (PREDICTION): Lê a velocidade física do alvo e compensa dividindo por 1.5
+        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity
+        pos_x = pos_x + (alvoVelocidade.X / 1.5)
+        pos_y = pos_y + (alvoVelocidade.Y / 1.5)
+        pos_z = pos_z + (alvoVelocidade.Z / 1.5)
+        
+        -- Define offsets para alternar o impacto e esmagar o alvo
+        local posicoesTroll = {
+            Vector3.new(0, 0.5, 0),
+            Vector3.new(0, -2, 2.5),
+            Vector3.new(2.5, 0.5, -2.5),
+            Vector3.new(-2.5, -1, 2.5)
+        }
+        
+        for _, offset in ipairs(posicoesTroll) do
+            if PCar and chassi and flingBoatAtivo then
+                local rotacaoAleatoria = CFrame.Angles(
+                    math.rad(angle),
+                    math.rad(angle),
+                    math.rad(math.random(-360, 360))
+                )
+                
+                -- Teleporta o chassi aplicando o cálculo preditivo de movimento + offset + rotação
+                chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z) + offset) * rotacaoAleatoria
+                
+                -- Aplica a velocidade vetorial massiva nas propriedades nativas modernizadas do Roblox
+                chassi.AssemblyLinearVelocity = Vector3.new(math.random(-500, 500), 500, math.random(-500, 500))
+            end
+        end
+    end
 end
 
 local function ExecuteBringCouch(target)
