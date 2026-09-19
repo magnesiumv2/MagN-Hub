@@ -2562,7 +2562,7 @@ House:AddButton({
                                     fireclickdetector(clickDetector)
                                 end
                                 
-                                task.wait(0.05) -- Curta pausa antes de ir para a próxima casa
+                                task.wait(0.5) -- Curta pausa antes de ir para a próxima casa
                             end
                         end
                     end
