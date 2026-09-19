@@ -2978,6 +2978,104 @@ Anti:AddToggle({
    end
 })
 
+-- Toggle Único para Otimização Completa de FPS
+Anti:AddToggle({
+    Name = "Anti Lag",
+    Default = false,
+    Callback = function(State)
+        local Workspace = game:GetService("Workspace")
+        local Lighting = game:GetService("Lighting")
+        
+        if State then
+            -------------------------------------------------------------------
+            -- 1. ATIVAR ATALHOS DE DESEMPENHO (LIGAR TUDO)
+            -------------------------------------------------------------------
+            -- Desativa sombras em tempo real e joga a névoa para o infinito
+            Lighting.GlobalShadows = false
+            Lighting.FogStart = 999999
+            Lighting.FogEnd = 999999
+            
+            -- Desativa e esconde efeitos pesados de pós-processamento
+            for _, efeito in ipairs(Lighting:GetChildren()) do
+                if efeito:IsA("BlurEffect") or efeito:IsA("SunRaysEffect") or efeito:IsA("BloomEffect") or efeito:IsA("DepthOfFieldEffect") then
+                    if not efeito:FindFirstChild("OriginalEnabled") then
+                        local originalState = Instance.new("BoolValue")
+                        originalState.Name = "OriginalEnabled"
+                        originalState.Value = efeito.Enabled
+                        originalState.Parent = efeito
+                    end
+                    efeito.Enabled = false
+                end
+            end
+            
+            -- Substitui os materiais por Smooth Plastic e esconde Decals/Texturas
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and not obj:IsA("MeshPart") then
+                    if not obj:FindFirstChild("OriginalMaterial") then
+                        local originalMat = Instance.new("StringValue")
+                        originalMat.Name = "OriginalMaterial"
+                        originalMat.Value = tostring(obj.Material.Name)
+                        originalMat.Parent = obj
+                    end
+                    obj.Material = Enum.Material.SmoothPlastic
+                elseif obj:IsA("Texture") or obj:IsA("Decal") then
+                    if not obj:FindFirstChild("OriginalTransparency") then
+                        local originalTrans = Instance.new("NumberValue")
+                        originalTrans.Name = "OriginalTransparency"
+                        originalTrans.Value = obj.Transparency
+                        originalTrans.Parent = obj
+                    end
+                    obj.Transparency = 1
+                end
+            end
+            
+            if RedzLibrary and RedzLibrary.SetNotification then
+                RedzLibrary:SetNotification({"MagN Hub", "Modo desempenho ATIVADO!", 4})
+            end
+            
+        else
+            -------------------------------------------------------------------
+            -- 2. RESTAURAR VISUAL ORIGINAL DO BROOKHAVEN (DESLIGAR TUDO)
+            -------------------------------------------------------------------
+            -- Reativa as sombras e traz a névoa original de volta (padrão Roblox/Brookhaven)
+            Lighting.GlobalShadows = true
+            Lighting.FogStart = 0
+            Lighting.FogEnd = 1000 -- Padrão aproximado de renderização com névoa
+            
+            -- Reativa os efeitos de iluminação originais
+            for _, efeito in ipairs(Lighting:GetChildren()) do
+                if efeito:IsA("BlurEffect") or efeito:IsA("SunRaysEffect") or efeito:IsA("BloomEffect") or efeito:IsA("DepthOfFieldEffect") then
+                    local originalState = efeito:FindFirstChild("OriginalEnabled")
+                    if originalState then
+                        efeito.Enabled = originalState.Value
+                    else
+                        efeito.Enabled = true
+                    end
+                end
+            end
+            
+            -- Devolve os materiais e texturas corretos de volta aos blocos do mapa
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    local originalMat = obj:FindFirstChild("OriginalMaterial")
+                    if originalMat then
+                        obj.Material = Enum.Material[originalMat.Value]
+                    end
+                elseif obj:IsA("Texture") or obj:IsA("Decal") then
+                    local originalTrans = obj:FindFirstChild("OriginalTransparency")
+                    if originalTrans then
+                        obj.Transparency = originalTrans.Value
+                    end
+                end
+            end
+            
+            if RedzLibrary and RedzLibrary.SetNotification then
+                RedzLibrary:SetNotification({"MagN Hub", "Visual original restaurado.", 3})
+            end
+        end
+    end
+})
+
 game:GetService("CoreGui")["redz Library V5"].Hub.Image = "rbxassetid://113213458632705"
 wait(0.5)
 game:GetService("Players").LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Seated, true)
