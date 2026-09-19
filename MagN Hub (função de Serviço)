@@ -57,94 +57,109 @@ local GlitchSection = Window:MakeTab({ Title = "Skybox Server", Icon = "Home" })
 local RunService = game:GetService("RunService")
 local conexaoInvisivel = nil
 
-TabBrook:AddToggle({"Céu Preto Perfeito (Cartola Style)", false, function(State)
-    local LocalPlayer = game:GetService("Players").LocalPlayer
-    local Character = LocalPlayer.Character
-    
-    -- Seus IDs configurados
-    local CamisaPretaID = 8285369350 
-    local TorsoEsticavelID = 92757812011061 
+-- Criando o Toggle dentro da sua GlitchSection
+GlitchSection:AddToggle({
+    Name = "Céu Preto Perfeito (Cartola Style)",
+    Default = false,
+    Callback = function(State)
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+        local Character = LocalPlayer.Character
+        
+        -- Seus IDs configurados
+        local CamisaPretaID = 8285369350 
+        local TorsoEsticavelID = 92757812011061 
 
-    if State then
-        if Character and Character:FindFirstChild("Humanoid") then
-            local Humanoid = Character.Humanoid
-            local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization")
-            
-            -- 1. Equipa o torso esticável e as roupas pretas via Brookhaven
-            pcall(function()
-                if Remote then
-                    Remote:FireServer("WearPack", TorsoEsticavelID)
-                    Remote:FireServer("Shirt", CamisaPretaID)
-                    Remote:FireServer("Pants", CamisaPretaID)
-                end
-            end)
-            
-            -- 2. Estica o torso ao limite (Multiplicador de Escala R15)
-            local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
-            for _, nomeEscala in ipairs(Escalas) do
-                local valorEscala = Humanoid:FindFirstChild(nomeEscala)
-                if valorEscala and valorEscala:IsA("NumberValue") then
-                    valorEscala.Value = 150 -- Valor ideal para tampar todo o céu
-                end
-            end
-            
-            -- 3. Loop para deixar braços e pernas 100% invisíveis na sua tela e travar o visual
-            local membrosParaEsconder = {
-                "LeftUpperArm", "LeftLowerArm", "LeftHand",
-                "RightUpperArm", "RightLowerArm", "RightHand",
-                "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
-                "RightUpperLeg", "RightLowerLeg", "RightFoot"
-            }
-            
-            if conexaoInvisivel then conexaoInvisivel:Disconnect() end -- Previne bugs de conexões duplicadas
-            
-            conexaoInvisivel = RunService.RenderStepped:Connect(function()
-                if LocalPlayer.Character then
-                    for _, nomeMembro in ipairs(membrosParaEsconder) do
-                        local parte = LocalPlayer.Character:FindFirstChild(nomeMembro)
-                        if parte and parte:IsA("BasePart") then
-                            parte.Transparency = 1 -- Deixa invisível
-                        end
+        if State then
+            if Character and Character:FindFirstChild("Humanoid") then
+                local Humanoid = Character.Humanoid
+                local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization")
+                
+                -- 1. Equipa o torso esticável e as roupas pretas via Brookhaven
+                pcall(function()
+                    if Remote then
+                        Remote:FireServer("WearPack", TorsoEsticavelID)
+                        Remote:FireServer("Shirt", CamisaPretaID)
+                        Remote:FireServer("Pants", CamisaPretaID)
+                    end
+                 pcall(function()
+                    if Remote then
+                        Remote:FireServer("WearPack", TorsoEsticavelID)
+                        Remote:FireServer("Shirt", CamisaPretaID)
+                        Remote:FireServer("Pants", CamisaPretaID)
+                    end
+                end)
+                
+                -- 2. Estica o torso ao limite (Multiplicador de Escala R15)
+                local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
+                for _, nomeEscala in ipairs(Escalas) do
+                    local valorEscala = Humanoid:FindFirstChild(nomeEscala)
+                    if valorEscala and valorEscala:IsA("NumberValue") then
+                        valorEscala.Value = 150 -- Valor ideal para tampar todo o céu
                     end
                 end
-            end)
-            
-            RedzLibrary:SetNotification({"MagN Hub", "Céu Preto Ativado (Membros Ocultados)!", 4})
-        end
-    else
-        -------------------------------------------------------------------
-        -- DESATIVAR E RESTAURAR TUDO
-        -------------------------------------------------------------------
-        -- Desliga o loop de invisibilidade
-        if conexaoInvisivel then
-            conexaoInvisivel:Disconnect()
-            conexaoInvisivel = nil
-        end
-        
-        if Character and Character:FindFirstChild("Humanoid") then
-            local Humanoid = Character.Humanoid
-            
-            -- Retorna o tamanho ao padrão normal
-            local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
-            for _, nomeEscala in ipairs(Escalas) do
-                local valorEscala = Humanoid:FindFirstChild(nomeEscala)
-                if valorEscala and valorEscala:IsA("NumberValue") then
-                    valorEscala.Value = 1
+                
+                -- 3. Loop para deixar braços e pernas 100% invisíveis
+                local membrosParaEsconder = {
+                    "LeftUpperArm", "LeftLowerArm", "LeftHand",
+                    "RightUpperArm", "RightLowerArm", "RightHand",
+                    "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+                    "RightUpperLeg", "RightLowerLeg", "RightFoot"
+                }
+                
+                if conexaoInvisivel then conexaoInvisivel:Disconnect() end -- Evita loops duplicados
+                
+                conexaoInvisivel = RunService.RenderStepped:Connect(function()
+                    if LocalPlayer.Character then
+                        for _, nomeMembro in ipairs(membrosParaEsconder) do
+                            local parte = LocalPlayer.Character:FindFirstChild(nomeMembro)
+                            if parte and parte:IsA("BasePart") then
+                                parte.Transparency = 1 -- Deixa invisível
+                            end
+                        end
+                    end
+                end)
+                
+                -- Notificação usando a Redz Library padrão
+                if RedzLibrary and RedzLibrary.SetNotification then
+                    RedzLibrary:SetNotification({"MagN Hub", "Céu Preto Ativado!", 4})
                 end
             end
+        else
+            -------------------------------------------------------------------
+            -- DESATIVAR E RESTAURAR TUDO
+            -------------------------------------------------------------------
+            if conexaoInvisivel then
+                conexaoInvisivel:Disconnect()
+                conexaoInvisivel = nil
+            end
             
-            -- Torna os membros visíveis novamente ao resetar o avatar
-            pcall(function()
-                local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization")
-                if Remote then
-                    Remote:FireServer("ResetAvatar")
+            if Character and Character:FindFirstChild("Humanoid") then
+                local Humanoid = Character.Humanoid
+                
+                -- Retorna o tamanho ao padrão normal
+                local Escalas = {"BodyWidthScale", "BodyHeightScale", "BodyDepthScale", "HeadScale"}
+                for _, nomeEscala in ipairs(Escalas) do
+                    local valorEscala = Humanoid:FindFirstChild(nomeEscala)
+                    if valorEscala and valorEscala:IsA("NumberValue") then
+                        valorEscala.Value = 1
+                    end
                 end
-            end)
-            
-            RedzLibrary:SetNotification({"MagN Hub", "Céu e avatar restaurados.", 3})
+                
+                -- Torna os membros visíveis novamente ao resetar o avatar
+                pcall(function()
+                    local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("AvatarCustomization")
+                    if Remote then
+                        Remote:FireServer("ResetAvatar")
+                    end
+                end)
+                
+                if RedzLibrary and RedzLibrary.SetNotification then
+                    RedzLibrary:SetNotification({"MagN Hub", "Céu restaurado.", 3})
+                end
+            end
         end
     end
-end}) -- O parêntese e a chave fecham perfeitamente o AddToggle aqui no final
+}) -- Fechamento exato da tabela do GlitchSection:AddToggle
 
 local BossScript = Window:MakeTab({Title = "BruteScripts", Icon = "rbxassetid://114476297734336" })
 
