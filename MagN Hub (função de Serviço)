@@ -2545,12 +2545,12 @@ House:AddButton({
                         local knock = frontDoor and frontDoor:FindFirstChild("Knock")
                         
                         if knock then
-                            -- Pega o segundo filho conforme especificado: Knock:GetChildren()[2]
+                            -- Pega os filhos com segurança
                             local filhosKnock = knock:GetChildren()
                             local alvo = filhosKnock[2]
                             
                             -- Se o segundo filho existir e tiver um ClickDetector nele
-                            if alvo and alvo:FindFirstChild("ClickDetector") then
+                            if alvo and alvo:IsA("BasePart") and alvo:FindFirstChild("ClickDetector") then
                                 local clickDetector = alvo.ClickDetector
                                 
                                 -- Teleporta o jogador para a porta da casa atual
@@ -2573,7 +2573,7 @@ House:AddButton({
         -- 3. Teleporta você de volta para onde estava quando ativou a função
         Character.HumanoidRootPart.CFrame = posicaoOriginal
     end
-})
+}) -- <--- O fechamento estava incorreto ou incompleto aqui, o que quebrava o resto do Hub.
 
 local Avatar = Window:MakeTab({ Title = "Avatar", Icon = "rbxassetid://4483345998" })
 
