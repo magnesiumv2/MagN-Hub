@@ -1445,7 +1445,7 @@ local function ExecuteKillCouch(target)
     if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then return end
 
     task.spawn(function()
-        local originalCFrame = root.CFrame
+        local originalCFrame = root.CFrame -- SALVA ONDE O BOTÃO FOI CLICADO
 
         -- Garante que seu corpo está totalmente móvel no início do ataque
         for _, part in pairs(char:GetDescendants()) do
@@ -1521,60 +1521,48 @@ local function ExecuteKillCouch(target)
         end
         
         -- =============================================================================
-        -- [AÇÃO COMPORTAMENTAL: KILL INSTANTÂNEO NO VOID]
+        -- [AÇÃO DE ENTREGA NA COORDENADA E DESTRUIÇÃO DO COUCH]
         -- =============================================================================
         if tHum and tHum.Sit and handle then
-            -- Para o Fling imediatamente para o alvo ficar estático no sofá
             if bv then bv:Destroy() end
             handle.Velocity = Vector3.zero
             handle.RotVelocity = Vector3.zero
             task.wait(0.01)
 
-            -- Teleporta o sofá e você para milímetros antes da zona de morte (-498)
-            local voidCFrame = CFrame.new(target.Character.HumanoidRootPart.Position.X, -498, target.Character.HumanoidRootPart.Position.Z)
-            root.CFrame = voidCFrame
-            handle.CFrame = voidCFrame
-            task.wait(0.02)
+            -- Teleporta tudo junto para a sua coordenada solicitada
+            local coordenadaEspecifica = CFrame.new(1146, -484, 201)
+            root.CFrame = coordenadaEspecifica
+            handle.CFrame = coordenadaEspecifica
+            task.wait(0.05) 
 
-            -- Ativa a propriedade de morte por Void nativa do Roblox de volta para -500.
-            -- Como ele está em Y = -498 (milímetros acima), o motor do jogo mata ele de forma limpa e instantânea.
+            -- Retorna a altura de destruição nativa para -500
             workspace.FallenPartsDestroyHeight = -500
-            task.wait(0.2) -- Espera o servidor registrar o Kill dele
-            
-            if tool then tool:Destroy() end
+            task.wait(0.01)
+
+            -- APAGA O COUCH PRIMEIRO (O alvo perde a base e cai no void)
+            if tool then 
+                tool:Destroy() 
+            end
+            task.wait(0.05) 
         end
         
-        -- --- ROTINA DE RECUPERAÇÃO DO SEU REPOSITÓRIO ---
+        -- --- ROTINA DE RECUPERAÇÃO SEM CONGELAMENTO ---
         if hum then
             hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
             hum.PlatformStand = false
             hum:UnequipTools()
         end
         
-        if char and root and originalCFrame then
-            -- Passo 1: Congela
-            for _, part in pairs(char:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.Anchored = true
-                    part.Velocity = Vector3.zero
-                    part.RotVelocity = Vector3.zero
-                end
-            end
-            task.wait(0.05)
-            
-            -- Passo 2: Descongela
-            for _, part in pairs(char:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.Anchored = false
-                end
-            end
-            task.wait(0.01)
-            
-            -- Passo 3: Teleporta de volta para cima
+        -- TELEPORTA DIRETAMENTE DE VOLTA (Instantâneo para onde o botão foi clicado)
+        if root and originalCFrame then
             root.CFrame = originalCFrame
         end
         
         workspace.CurrentCamera.CameraSubject = hum
+        
+        -- Limpeza final de segurança no servidor do Brookhaven
+        task.wait(0.1)
+        game:GetService("ReplicatedStorage").RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
     end)
 end
 
