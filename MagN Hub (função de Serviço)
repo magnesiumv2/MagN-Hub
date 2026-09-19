@@ -1246,7 +1246,7 @@ local function ExecuteFlingBoat(target)
 
     local chassi = PCar.PrimaryPart or Seat
 
-    -- Configuração de Colisão (Ignora você, bate no Target)
+    -- Configuração de Colisão (O barco DEVE colidir com o alvo)
     pcall(function()
         PhysicsService:RegisterCollisionGroup("PlayersGroup")
         PhysicsService:RegisterCollisionGroup("BoatGroup")
@@ -1258,21 +1258,21 @@ local function ExecuteFlingBoat(target)
         for _, part in ipairs(PCar:GetDescendants()) do
             if part:IsA("BasePart") then 
                 part.CollisionGroup = "BoatGroup"
-                part.CanCollide = true
+                part.CanCollide = true -- Ativo para bater no alvo
             end
         end
     end)
 
-    -- Forças físicas de rotação violenta
-    local bAV = chassi:FindFirstChild("FlingAngular") or Instance.new("BodyAngularVelocity", chassi)
+    -- MUDANÇA AQUI: Criamos as forças diretamente no SEU HumanoidRootPart!
+    local bAV = RootPart:FindFirstChild("FlingAngular") or Instance.new("BodyAngularVelocity", RootPart)
     bAV.Name = "FlingAngular"
     bAV.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    bAV.P = 150000
+    bAV.P = 200000
 
-    local bV = chassi:FindFirstChild("FlingLinear") or Instance.new("BodyVelocity", chassi)
+    local bV = RootPart:FindFirstChild("FlingLinear") or Instance.new("BodyVelocity", RootPart)
     bV.Name = "FlingLinear"
     bV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    bV.P = 150000
+    bV.P = 200000
 
     local angle = 0
 
@@ -1281,23 +1281,33 @@ local function ExecuteFlingBoat(target)
         game:GetService("RunService").Heartbeat:Wait()
         
         angle = (angle + 90) % 360
-        bAV.AngularVelocity = Vector3.new(95000, 95000, 95000)
-        bV.Velocity = Vector3.new(math.random(-2000, 2000), math.random(-500, 500), math.random(-2000, 2000))
         
+        -- Aplica velocidades massivas e brutas no seu personagem, que se estendem ao barco
+        bAV.AngularVelocity = Vector3.new(0, 99999, 0)
+        bV.Velocity = Vector3.new(99999, 99999, 99999)
+        
+        -- Atualiza a posição com base na movimentação do Alvo (Prediction)
         local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity or Vector3.new(0,0,0)
-        local pos_x = TargetRP.Position.X + (alvoVelocidade.X * 0.12)
-        local pos_y = TargetRP.Position.Y + (alvoVelocidade.Y * 0.12)
-        local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.12)
+        local pos_x = TargetRP.Position.X + (alvoVelocidade.X * 0.15)
+        local pos_y = TargetRP.Position.Y + (alvoVelocidade.Y * 0.15)
+        local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.15)
         
         if PCar and chassi and flingBoatAtivo then
-            local rotacaoMaluco = CFrame.Angles(math.rad(angle), math.rad(angle), math.rad(angle))
+            -- Teleporta o chassi do barco colado no alvo girando loucamente
+            local rotacaoMaluco = CFrame.Angles(math.rad(angle), math.rad(math.random(-360, 360)), math.rad(angle))
             chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z)) * rotacaoMaluco
         end
     end
 
-    -- Limpeza das forças ao desligar o loop
+    -- Limpeza total das forças no seu boneco ao desligar
     if bAV then bAV:Destroy() end
     if bV then bV:Destroy() end
+    
+    -- Restaura sua velocidade padrão após o término do fling
+    if RootPart then
+        RootPart.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        RootPart.AssemblyAngularVelocity = Vector3.new(0,0,0)
+    end
 end
 
 local function ExecuteBringCouch(target)
