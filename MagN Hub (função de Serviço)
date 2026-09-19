@@ -2211,6 +2211,77 @@ Lag:AddToggle({
     end
 })
 
+-- Botão para Clonar todas as ferramentas do Brookhaven de uma vez só
+Lag:AddButton({
+    Name = "Pegar Todas as Ferramentas",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+        
+        -- Locais comuns onde o Brookhaven armazena as ferramentas no jogo
+        local locaisDeFerramentas = {
+            game:GetService("ReplicatedStorage"):FindFirstChild("Tools"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("Items"),
+            game:GetService("ReplicatedStorage") -- Busca geral caso estejam soltas
+        }
+        
+        local ferramentasClonadas = 0
+        
+        -- Varre os locais em busca de objetos do tipo "Tool"
+        for _, pasta in ipairs(locaisDeFerramentas) do
+            if pasta then
+                for _, objeto in ipairs(pasta:GetChildren()) do
+                    if objeto:IsA("Tool") and Backpack then
+                        -- Evita clonar ferramentas repetidas que você já tenha na mochila
+                        if not Backpack:FindFirstChild(objeto.Name) then
+                            pcall(function()
+                                local clone = objeto:Clone()
+                                clone.Parent = Backpack
+                                ferramentasClonadas = ferramentasClonadas + 1
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Notificação de sucesso com a quantidade de itens obtidos
+        if RedzLibrary and RedzLibrary.SetNotification then
+            if ferramentasClonadas > 0 then
+                RedzLibrary:SetNotification({"MagN Hub", ferramentasClonadas .. " ferramentas adicionadas à mochila!", 4})
+            else
+                RedzLibrary:SetNotification({"MagN Hub", "Nenhuma nova ferramenta encontrada ou inventário cheio.", 3})
+            end
+        end
+    end
+})
+
+Lag:AddButton({
+    Name = "Limpar Inventário",
+    Callback = function()
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+        local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+        local Character = LocalPlayer.Character
+        
+        if Backpack then
+            Backpack:ClearAllChildren() -- Apaga tudo o que está guardado
+        end
+        
+        if Character then
+            for _, item in ipairs(Character:GetChildren()) do
+                if item:IsA("Tool") then
+                    item:Destroy() -- Apaga a ferramenta que estiver na mão do jogador no momento
+                end
+            end
+        end
+        
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Inventário limpo com sucesso!", 3})
+        end
+    end
+})
+
 local House = Window:MakeTab({ Title = "Casas", Icon = "home" })
 
 local RunService = game:GetService("RunService")
