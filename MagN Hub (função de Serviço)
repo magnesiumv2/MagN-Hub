@@ -57,12 +57,6 @@ local GlitchSection = Window:MakeTab({ Title = "Skybox Server", Icon = "Home" })
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- 1. Criação da Aba na Redz Library
-local SkyboxTab = Window:MakeTab({ -- Altere "Window" para a variável da sua janela principal
-    Name = "Skybox (Global)",
-    Icon = "rbxassetid://4483345998"
-})
-
 local GlitchSection = SkyboxTab:AddSection({
     Name = "Céus Globais por Estiramento de Avatar"
 })
@@ -114,22 +108,6 @@ GlitchSection:AddToggle({
             local BUNDLE_GLITCH_ID = 00000000
             
             aplicarVisualSkybox(TEXTURA_SHIRT_HEXAGON, nil, BUNDLE_GLITCH_ID)
-        else
-            resetarAvatarNormal()
-        end
-    end
-})
-
--- 3. Toggle 2: Céu de Anime / Meme Esticado
-GlitchSection:AddToggle({
-    Name = "Ativar Céu Anime Custom",
-    Default = false,
-    Callback = function(v)
-        if v then
-            local TEXTURA_ANIME = 00000000
-            local BUNDLE_GLITCH_ID = 00000000
-            
-            aplicarVisualSkybox(TEXTURA_ANIME, nil, BUNDLE_GLITCH_ID)
         else
             resetarAvatarNormal()
         end
