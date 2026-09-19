@@ -1993,6 +1993,38 @@ Car:AddButton({
     end
 })
 
+local Workspace = game:GetService("Workspace")
+
+Car:AddButton({
+    Name = "Destrancar Todos os Carros",
+    Callback = function()
+        -- Vasculha de forma profunda tudo o que está gerado no mapa do Brookhaven
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            -- 1. Verifica se encontrou as variáveis lógicas de tranca do Brookhaven
+            if obj.Name == "IsLocked" or obj.Name == "Locked" or obj.Name == "Lock" then
+                if obj:IsA("BoolValue") then
+                    obj.Value = false -- Desmarca a tranca (Torna Falso)
+                end
+            end
+            
+            -- 2. Abre os assentos/portas que ignoram cliques quando o carro está trancado
+            if obj.Name == "DriveSeat" or obj.Name == "VehicleSeat" or obj.Name == "PassengerSeat" then
+                if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+                    obj.Disabled = false -- Garante que o banco não esteja desativado para entrar
+                end
+            end
+            
+            -- 3. Quebra a barreira física das portas dos carros dos jogadores
+            if obj.Name == "DoorLock" or obj.Name == "CarDoorLock" then
+                if obj:IsA("BasePart") then
+                    obj.CanCollide = false
+                    obj.CanTouch = true
+                end
+            end
+        end
+    end
+})
+
 local Lag = Window:MakeTab({ Title = "Ferramentas", Icon = "rbxassetid://4483345998" })
 
 local Players = game:GetService("Players")
