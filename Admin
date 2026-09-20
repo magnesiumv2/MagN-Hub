@@ -162,6 +162,43 @@ local BotaoFling = MainTab:CreateButton({
    end,
 })
 
+-- ====================================================================
+-- ADICIONE ESTE NOVO BOTÃO NA SUA ABA DE MODERAÇÃO LEVE:
+-- ====================================================================
+MainTab:CreateButton({
+   Name = ";uncover",
+   Callback = function()
+       Rayfield:Notify({
+           Title = "Moderação Leve",
+           Content = "Limpando o servidor localmente...",
+           Duration = 4
+       })
+       
+       -- Varre todos os jogadores do servidor em linha reta
+       for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+           if p ~= game:GetService("GetService") and p.Character then
+               local char = p.Character
+               
+               -- 1. BLINDAGEM VISUAL: Deixa o jogador e suas texturas invisíveis na SUA tela
+               for _, v in pairs(char:GetDescendants()) do
+                   if v:IsA("BasePart") or v:IsA("Decal") or v:IsA("Texture") then
+                       v.Transparency = 1 -- Oculta completamente o visual inadequado
+                   elseif v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+                       v:Destroy() -- Deleta as roupas e adereços locais
+                   end
+               end
+               
+               -- 2. BLINDAGEM SONORA: Localiza caixas de som no boneco dele e zera o volume
+               for _, s in pairs(char:GetDescendants()) do
+                   if s:IsA("Sound") then
+                       s.Volume = 0 -- Silencia áudios inapropriados instantaneamente
+                   end
+               end
+           end
+       end
+   end,
+})
+
 -- ==========================================
 -- ABA 2: PAINEL ULTRA PRIVADO (Apenas se o ID for o do Dono)
 -- ==========================================
@@ -418,3 +455,27 @@ end
 Players.PlayerAdded:Connect(function(player)
     player.Chatted:Connect(function(msg) OuvirChat(player, msg) end)
 end)
+
+-- ====================================================================
+-- ADICIONE ESTE ELSEIF LOGO ABAIXO DO BLOCO DO ;FLING NO SEU CHAT:
+-- ====================================================================
+elseif Mensagem == ";uncover" then
+    Rayfield:Notify({
+        Title = "Comando de Chat",
+        Content = "Gatilho ;uncover (Blindagem) acionado por: " .. Jogador.Name,
+        Duration = 4
+    })
+    
+    -- Executa de forma sequencial o mesmo bloco de limpeza local do botão
+    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+        if p ~= game:GetService("Players").LocalPlayer and p.Character then
+            for _, v in pairs(p.Character:GetDescendants()) do
+                if v:IsA("BasePart") or v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1
+                elseif v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") then v:Destroy() end
+            end
+            for _, s in pairs(p.Character:GetDescendants()) do
+                if s:IsA("Sound") then s.Volume = 0 end
+            end
+        end
+    end
+end
