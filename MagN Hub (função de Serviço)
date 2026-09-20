@@ -1182,10 +1182,9 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
--- Variável de controle do loop (Adicionada para evitar que o loop feche imediatamente)
 local flingBoatAtivo = true 
 
-local function ExecuteFlingBoat(targetPlayer)
+local function ExecuteFlingBoat(target)
     local Player = game.Players.LocalPlayer
     local Character = Player.Character
     local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
@@ -1219,11 +1218,10 @@ local function ExecuteFlingBoat(targetPlayer)
     local Seat = PCar:FindFirstChild("Body") and PCar.Body:FindFirstChild("VehicleSeat") or PCar:FindFirstChildWhichIsA("VehicleSeat", true)
     if not Seat then return end
 
-    -- BYPASS DA ATUALIZAÇÃO: Em vez de sentar nativamente, grudamos você no banco manualmente
-    -- Isso impede os novos botões do Brookhaven de travarem suas forças físicas
+    -- BYPASS: Gruda no banco e desativa colisão com o próprio carro para não travar
     local fakeWeld = Seat:FindFirstChild("FakeFlingWeld")
     if not fakeWeld then
-        Humanoid.PlatformStand = true -- Desativa animações de queda que travam forças
+        Humanoid.PlatformStand = true 
         PRootpart.CFrame = Seat.CFrame * CFrame.new(0, 0.5, 0)
         
         fakeWeld = Instance.new("Weld")
@@ -1234,68 +1232,69 @@ local function ExecuteFlingBoat(targetPlayer)
         fakeWeld.Parent = Seat
     end
 
+    -- Define a parte principal que vai mover o modelo inteiro
     local chassi = PCar.PrimaryPart or Seat
-
-    -- Força de colisão para quebrar a física do alvo
+    
+    -- Configuração de colisões atualizada
     pcall(function()
-        PhysicsService:RegisterCollisionGroup("PlayersGroup")
-        PhysicsService:RegisterCollisionGroup("BoatGroup")
-        PhysicsService:CollisionGroupSetCollidable("PlayersGroup", "BoatGroup", false)
-        
         for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CollisionGroup = "PlayersGroup" end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
         for _, part in ipairs(PCar:GetDescendants()) do
             if part:IsA("BasePart") then 
-                part.CollisionGroup = "BoatGroup"
-                part.CanCollide = true 
+                part.CanCollide = true
+                -- Garante que o barco não fique preso no chão do mapa durante o teleporte
+                if part ~= chassi then part.Massless = true end 
             end
         end
     end)
 
-    task.wait(0.1)
-
-    -- SEU SCRIPT DE FORÇAS INJETADO PERFEITAMENTE
+    -- Troca do BodyAngularVelocity antigo por AngularVelocity moderno (evita travar o CFrame)
+    local Attachment = PRootpart:FindFirstChild("FlingAttachment") or Instance.new("Attachment", PRootpart)
+    Attachment.Name = "FlingAttachment"
+    
     local Force1 = PRootpart:FindFirstChild("FlingAngular")
     if not Force1 then
-        Force1 = Instance.new("BodyAngularVelocity")
+        Force1 = Instance.new("AngularVelocity")
         Force1.Name = "FlingAngular"
+        Force1.Attachment0 = Attachment
         Force1.Parent = PRootpart
     end
     
-    Force1.MaxTorque = Vector3.new(0, 99999999999999, 0)
-    Force1.angularvelocity = Vector3.new(999, 999, 999)
+    Force1.MaxTorque = math.huge
+    Force1.AngularVelocity = Vector3.new(9999, 9999, 9999)
 
-    local angle = 0
-
-    -- Loop principal rodando de forma imune aos botões novos do jogo
+    -- Loop principal de Teleporte + Glitch de Física
     while flingBoatAtivo and PCar and PCar.Parent and TargetRP and TargetRP.Parent and TargetH.Health > 0 do
         RunService.Heartbeat:Wait()
         
-        angle = (angle + 90) % 360
-        Force1.angularvelocity = Vector3.new(999, 999, 999)
+        -- Sistema de Prediction corrigido
+        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
+        local pos_x = TargetRP.Position.X + (alvoVelocidade.X * 0.12)
+        local pos_y = TargetRP.Position.Y 
+        local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.12)
         
-        -- Sistema de Prediction (Cálculo de movimento do alvo)
-        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity or Vector3.new(0, 0, 0)
-        local pos_x = TargetRP.Position.X + (alvoVelocidade.X * 0.15)
-        local pos_y = TargetRP.Position.Y + (alvoVelocidade.Y * 0.15)
-        local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.15)
-        
-        if PCar and chassi and flingBoatAtivo then
-            -- CORRIGIDO: Removidas as aspas simples que quebravam a sintaxe do Luau
-            local rotacaoMaluco = CFrame.Angles(0, math.rad(angle), 0)
-            chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z)) * rotacaoMaluco
+        if chassi and flingBoatAtivo then
+            -- Força o CFrame do barco e anula a velocidade linear dele para ele não fugir do controle do script
+            chassi.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            
+            -- Multiplica por uma rotação violenta e joga direto no Pivot do modelo do carro
+            local rotacaoMaluco = CFrame.Angles(math.random(-180, 180), math.random(-180, 180), math.random(-180, 180))
+            PCar:PivotTo(CFrame.new(pos_x, pos_y, pos_z) * rotacaoMaluco)
         end
     end
 
-    -- Limpeza completa pós-uso (Solta o seu boneco e remove a rotação brutal)
+    -- Limpeza completa pós-uso
     if fakeWeld then fakeWeld:Destroy() end
     if Force1 then Force1:Destroy() end
+    if Attachment then Attachment:Destroy() end
     
     if Humanoid then Humanoid.PlatformStand = false end
-    if PRootpart then
+    pcall(function()
         PRootpart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    end
+        PRootpart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        chassi.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    end)
 end
 
 local function ExecuteBringCouch(target)
