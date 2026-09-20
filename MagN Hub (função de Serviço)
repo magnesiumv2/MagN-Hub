@@ -32,7 +32,7 @@ workspace.FallenPartsDestroyHeight = -math.huge
 
 local Window = Libary:MakeWindow({
     Title = "MagN Hub",
-    SubTitle = "Para Brookhaven RP (Hub Destrutivo)",
+    SubTitle = "Brookhaven| By Magnesium2",
     LoadText = "CHAOS ARQUIVO",
     Flags = "chaoshub_Broookhaven"
 })
