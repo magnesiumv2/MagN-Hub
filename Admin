@@ -45,17 +45,119 @@ MainTab:CreateInput({
        AlvoSelecionado = Text
    end,
 })
-
-MainTab:CreateButton({
+-- ====================================================================
+-- SUBSTITUA O SEU BOTÃO ;FLING ANTIGO POR ESTE BLOCO:
+-- ====================================================================
+local BotaoFling = MainTab:CreateButton({
    Name = ";fling",
    Callback = function()
        if AlvoSelecionado ~= "" then
-           print("Executando fling via botão no alvo: " .. AlvoSelecionado)
-           Rayfield:Notify({
-               Title = "Moderação Leve",
-               Content = "Comando Fling enviado para: " .. AlvoSelecionado,
-               Duration = 4
-           })
+           
+           -- [BUSCA DIRETA POR NOME ABREVIADO]
+           local JogadorAlvo = nil
+           local query = string.lower(AlvoSelecionado)
+           for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+               if p ~= game:GetService("Players").LocalPlayer then
+                   if string.sub(string.lower(p.Name), 1, #query) == query or string.sub(string.lower(p.DisplayName), 1, #query) == query then
+                       JogadorAlvo = p
+                       break
+                   end
+               end
+           end
+
+           if JogadorAlvo then
+               Rayfield:Notify({
+                   Title = "Moderação Leve",
+                   Content = "Executando Fling em: " .. JogadorAlvo.Name,
+                   Duration = 4
+               })
+               
+               -- [LÓGICA DIRETA DO FLING]
+               local flingActive = true
+               local target = JogadorAlvo
+               local char = game:GetService("Players").LocalPlayer.Character
+               local root = char and char:FindFirstChild("HumanoidRootPart")
+               local hum = char and char:FindFirstChildOfClass("Humanoid")
+               local originalCFrame = root and root.CFrame 
+
+               task.spawn(function()
+                   while flingActive and target and target.Parent == game:GetService("Players") do
+                       local backpack = game:GetService("Players").LocalPlayer:WaitForChild("Backpack", 5)
+                       local ServerBalls = workspace:WaitForChild("WorkspaceCom", 5):WaitForChild("001_SoccerBalls", 5)
+                       
+                       if not backpack or not ServerBalls then break end
+
+                       -- PEGAR A BOLA DE FORMA DIRETA
+                       if not backpack:FindFirstChild("SoccerBall") then
+                           local re = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
+                           local remote = re and re:FindFirstChild("1Too1l")
+                           if remote then remote:InvokeServer("PickingTools", "SoccerBall") end
+                       end
+                       repeat task.wait() until backpack:FindFirstChild("SoccerBall")
+                       backpack.SoccerBall.Parent = char
+                       repeat task.wait() until ServerBalls:FindFirstChild("Soccer" .. game:GetService("Players").LocalPlayer.Name)
+                       char.SoccerBall.Parent = backpack
+                       
+                       local Ball = ServerBalls:FindFirstChild("Soccer" .. game:GetService("Players").LocalPlayer.Name)
+                       if not Ball then break end
+                       
+                       Ball.CanCollide = false
+                       Ball.Massless = true
+                       Ball.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0, 0)
+
+                       if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                           local tchar = target.Character
+                           local thum = tchar:FindFirstChildOfClass("Humanoid")
+
+                           for _, child in pairs(Ball:GetChildren()) do
+                               if child:IsA("BodyVelocity") or child:IsA("BodyAngularVelocity") then child:Destroy() end
+                           end
+
+                           local bv = Instance.new("BodyVelocity")
+                           bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                           bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                           bv.P = 9e900
+                           bv.Parent = Ball
+
+                           local bav = Instance.new("BodyAngularVelocity")
+                           bav.AngularVelocity = Vector3.new(9e8, 9e8, 9e8)
+                           bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                           bav.P = 9e900
+                           bav.Parent = Ball
+
+                           workspace.CurrentCamera.CameraSubject = thum
+                           
+                           while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == game:GetService("Players") do
+                               for _, v in pairs(tchar:GetDescendants()) do
+                                   if not flingActive or thum.Health <= 0 then break end
+                                   if v:IsA("BasePart") and not v.Anchored and v.Name ~= "HumanoidRootPart" then
+                                       Ball.CFrame = v.CFrame
+                                       Ball.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                                       Ball.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+                                       task.wait(1/2000)
+                                   end
+                               end
+                               task.wait()
+                           end
+                           
+                           if bv then bv:Destroy() end
+                           if bav then bav:Destroy() end
+                           Ball.Velocity = Vector3.zero
+                           Ball.RotVelocity = Vector3.zero
+                           if root and originalCFrame then root.CFrame = originalCFrame end
+                           workspace.CurrentCamera.CameraSubject = hum
+                           flingActive = false 
+                       else
+                           if root and originalCFrame then root.CFrame = originalCFrame end
+                           flingActive = false
+                       end
+                       task.wait(0.5) 
+                   end
+               end)
+               
+           else
+               Rayfield:Notify({ Title = "Erro", Content = "Jogador não encontrado.", Duration = 4 })
+           end
        end
    end,
 })
@@ -189,15 +291,22 @@ local function OuvirChat(Jogador, Mensagem)
         if string.sub(Mensagem, 1, 7) == ";fling " then
             local NomeDoAlvo = string.sub(Mensagem, 8)
             if NomeDoAlvo and NomeDoAlvo ~= "" then
-                print("Executando fling via chat para o alvo: " .. NomeDoAlvo)
-                Rayfield:Notify({
-                    Title = "Comando de Chat",
-                    Content = "Fling ativado via chat para: " .. NomeDoAlvo,
-                    Duration = 4
-                })
-            end
-        end
+                -- ====================================================================
+-- SUBSTITUA O IF DO ;FLING DENTRO DA FUNÇÃO OUVIRCHAT POR ESTE:
+-- ====================================================================
+if string.sub(Mensagem, 1, 7) == ";fling " then
+    local NomeDoAlvo = string.sub(Mensagem, 8)
+    if NomeDoAlvo and NomeDoAlvo ~= "" then
+        AlvoSelecionado = NomeDoAlvo -- Atualiza o texto do painel com o nome que você digitou no chat
+        Rayfield:Notify({
+            Title = "Comando de Chat",
+            Content = "Gatilho ;fling acionado via chat por: " .. Jogador.Name,
+            Duration = 4
+        })
+        -- Força a execução do clique do botão lá de cima de forma limpa
+        pcall(function() BotaoFling.Callback() end)
     end
+end
     
     -- 2. Comandos restritos estritamente ao seu ID de Dono
     if Jogador.UserId == ID_DONO then
