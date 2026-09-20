@@ -3050,8 +3050,6 @@ Anti:AddToggle({
             -------------------------------------------------------------------
             -- Desativa sombras em tempo real e joga a névoa para o infinito
             Lighting.GlobalShadows = false
-            Lighting.FogStart = 999999
-            Lighting.FogEnd = 999999
             
             -- Desativa e esconde efeitos pesados de pós-processamento
             for _, efeito in ipairs(Lighting:GetChildren()) do
@@ -3097,8 +3095,6 @@ Anti:AddToggle({
             -------------------------------------------------------------------
             -- Reativa as sombras e traz a névoa original de volta (padrão Roblox/Brookhaven)
             Lighting.GlobalShadows = true
-            Lighting.FogStart = 0
-            Lighting.FogEnd = 1000 -- Padrão aproximado de renderização com névoa
             
             -- Reativa os efeitos de iluminação originais
             for _, efeito in ipairs(Lighting:GetChildren()) do
