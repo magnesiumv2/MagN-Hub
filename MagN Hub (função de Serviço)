@@ -1182,7 +1182,10 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local function ExecuteFlingBoat(target)
+-- Variável de controle do loop (Adicionada para evitar que o loop feche imediatamente)
+local flingBoatAtivo = true 
+
+local function ExecuteFlingBoat(targetPlayer)
     local Player = game.Players.LocalPlayer
     local Character = Player.Character
     local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
@@ -1279,7 +1282,8 @@ local function ExecuteFlingBoat(target)
         local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.15)
         
         if PCar and chassi and flingBoatAtivo then
-            local 'rotacaoMaluco' = CFrame.Angles(0, math.rad(angle), 0)
+            -- CORRIGIDO: Removidas as aspas simples que quebravam a sintaxe do Luau
+            local rotacaoMaluco = CFrame.Angles(0, math.rad(angle), 0)
             chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z)) * rotacaoMaluco
         end
     end
