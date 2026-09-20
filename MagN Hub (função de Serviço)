@@ -2600,45 +2600,43 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
--- Função no estilo Cartola Hub para bugar o lote e duplicar casas
+-- Adiciona o botão diretamente na sua aba 'House'
 House:AddButton({
-   Name = "Duplicar casa",
-   Callback = function()
-    -- Procura o Remote responsável pela gestão de terrenos no Brookhaven
-    local HouseRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1House1s") 
-        or ReplicatedStorage:FindFirstChild("HouseSystem")
-        
-    if not HouseRemote then
-        if RedzLibrary and RedzLibrary.SetNotification then
-            RedzLibrary:SetNotification({"MagN Hub", "Erro: Sistema de casas não encontrado!", 4})
-        end
-        return
-    end
-
-    -- Passo 1: Informa ao servidor local que você está liberando o lote atual para limpar o nome da casa
-    -- Mudamos o estado da propriedade que diz se você já possui uma casa registrada
-    pcall(function()
-        if Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("HouseGui") then
-            -- Engana a sua própria interface para liberar os botões de compra
-            local CooldownOrOwn = Player.PlayerGui.HouseGui:FindFirstChild("OwnHouse") or Player.PlayerGui.HouseGui:FindFirstChild("HasHouse")
-            if CooldownOrOwn then
-                CooldownOrOwn.Value = false
+    Name = "Duplicar Casa",
+    Callback = function()
+        -- Procura o Remote responsável pela gestão de terrenos no Brookhaven
+        local HouseRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1House1s") 
+            or ReplicatedStorage:FindFirstChild("HouseSystem")
+            
+        if not HouseRemote then
+            if RedzLibrary and RedzLibrary.SetNotification then
+                RedzLibrary:SetNotification({"MagN Hub", "Erro: Sistema de casas não encontrado!", 4})
             end
+            return
         end
-        
-        -- Envia o sinal falso de remoção do registro para limpar o ID sem apagar os blocos da casa antiga
-        HouseRemote:FireServer("ClearHouseOwner", Player.Name)
-    end)
 
-    -- Passo 2: Delay sutil (wait) extremamente rápido para o jogo computar que você "não tem casa"
-    task.wait(0.1)
+        -- Passo 1: Engana a interface local e limpa o registro do dono do lote
+        pcall(function()
+            if Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("HouseGui") then
+                -- Libera os botões de compra no seu menu nativo do Brookhaven
+                local CooldownOrOwn = Player.PlayerGui.HouseGui:FindFirstChild("OwnHouse") or Player.PlayerGui.HouseGui:FindFirstChild("HasHouse")
+                if CooldownOrOwn then
+                    CooldownOrOwn.Value = false
+                end
+            end
+            
+            -- Envia o sinal falso para remover o nome da placa sem deletar a estrutura
+            HouseRemote:FireServer("ClearHouseOwner", Player.Name)
+        end)
 
-    -- Notificação de sucesso na interface do MagN Hub
-    if RedzLibrary and RedzLibrary.SetNotification then
-        RedzLibrary:SetNotification({"MagN Hub", "Sucesso! Registro removido. Pegue uma nova casa!", 4})
+        -- Passo 2: Pequeno delay estratégico para o jogo processar que o lote está livre
+        task.wait(0.1)
+
+        -- Notificação de sucesso no MagN Hub
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Registro removido! Já pode pegar outra casa.", 4})
+        end
     end
-end
-end
 })
 
 local RunService = game:GetService("RunService")
