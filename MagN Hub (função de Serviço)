@@ -32,7 +32,7 @@ workspace.FallenPartsDestroyHeight = -math.huge
 
 local Window = Libary:MakeWindow({
     Title = "MagN Hub",
-    SubTitle = "Brookhaven| By Magnesium2",
+    SubTitle = "Brookhaven RP| By Magnesium2",
     LoadText = "CHAOS ARQUIVO",
     Flags = "chaoshub_Broookhaven"
 })
@@ -59,7 +59,7 @@ local conexaoInvisivel = nil
 
 -- Criando o Toggle dentro da sua GlitchSection
 GlitchSection:AddToggle({
-    Name = "Céu Preto Perfeito (Cartola Style)",
+    Name = "Céu Preto Perfeito",
     Default = false,
     Callback = function(State)
         local LocalPlayer = game:GetService("Players").LocalPlayer
