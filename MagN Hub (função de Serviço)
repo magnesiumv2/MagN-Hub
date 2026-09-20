@@ -2596,83 +2596,49 @@ House:AddToggle({
 
 House:AddSection({"Duplicar Casa"})
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+
+-- Função no estilo Cartola Hub para bugar o lote e duplicar casas
 House:AddButton({
-    Name = "Duplicar Casa",
-    Callback = function()
-        local players = game:GetService("Players")
-        local player = players.LocalPlayer
-        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
+   Name = "Duplicar casa",
+   Callback = function()
+    -- Procura o Remote responsável pela gestão de terrenos no Brookhaven
+    local HouseRemote = ReplicatedStorage:FindFirstChild("RE") and ReplicatedStorage.RE:FindFirstChild("1House1s") 
+        or ReplicatedStorage:FindFirstChild("HouseSystem")
         
-        if not remotes then 
-            warn("MagN Hub: Remotes do Brookhaven não encontrados.")
-            return 
+    if not HouseRemote then
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Erro: Sistema de casas não encontrado!", 4})
         end
-
-        task.spawn(function()
-            -- 1. Identifica qual casa você está usando atualmente
-            -- No Brookhaven, as informações das casas ficam em pastas no ReplicatedStorage ou no Workspace associadas ao seu jogador
-            local minhaCasaAtualId = nil
-            local meuLoteAtualNum = nil
-            
-            -- Varre o mapa para encontrar qual lote pertence a você neste momento
-            for _, lote in pairs(workspace:GetChildren()) do
-                if lote.Name:match("^Plot") or lote.Name:find("House") then
-                    local owner = lote:FindFirstChild("Owner") or lote:FindFirstChild("Dono")
-                    if owner and owner.Value == player.Name then
-                        meuLoteAtualNum = lote.Name
-                        -- Detecta o ID do modelo da casa construída
-                        if lote:FindFirstChild("HouseModel") then
-                            minhaCasaAtualId = lote.HouseModel:GetAttribute("HouseID") or "PrebuiltHouse"
-                        end
-                        break
-                    end
-                end
-            end
-
-            -- 2. Procura um NOVO lote totalmente vazio no servidor para clonar a casa
-            local loteVazioEncontrado = nil
-            for _, lote in pairs(workspace:GetChildren()) do
-                if lote.Name:match("^Plot") or lote.Name:find("House") then
-                    local owner = lote:FindFirstChild("Owner") or lote:FindFirstChild("Dono")
-                    -- Se o lote não tiver dono e for diferente do seu lote atual
-                    if (not owner or owner.Value == "") and lote.Name ~= meuLoteAtualNum then
-                        loteVazioEncontrado = lote
-                        break
-                    end
-                end
-            end
-
-            -- 3. Executa o Bypass de Duplicação via RemoteServer
-            if loteVazioEncontrado then
-                pcall(function()
-                    --[[
-                       Mecânica de Duplicação:
-                       O Brookhaven processa a compra enviando o ID da casa e o lote desejado.
-                       Para burlar a exclusão automática, enviamos um sinal camuflado pedindo 
-                       para registrar a mesma skin de casa no lote vazio diretamente.
-                    --]]
-                    
-                    -- Dispara o remote simulando a seleção da casa no novo espaço livre
-                    -- Nota: O nome dos remotes de lote podem variar dependendo da atualização semanal do Brookhaven
-                    remotes:FindFirstChild("1Hous1ePlac1e"):FireServer("ClaimPlot", loteVazioEncontrado.Name)
-                    task.wait(0.1)
-                    
-                    -- Se o script encontrou qual casa você estava usando, ele força o spawn dela no novo lote
-                    if minhaCasaAtualId then
-                        remotes:FindFirstChild("1Hous1ePlac1e"):FireServer("SpawnHouse", minhaCasaAtualId)
-                    else
-                        -- Caso não detecte o ID, ele abre o catálogo local permitindo você escolher qualquer uma sem apagar a anterior
-                        remotes:FindFirstChild("1Hous1ePlac1e"):FireServer("SpawnHouse", "StandardHouse1")
-                    end
-                end)
-                
-                print("todos os carros foram removidos") -- Padrão de aviso ou use o texto que preferir para casas
-                print("MagN Hub: Casa duplicada com sucesso no " .. tostring(loteVazioEncontrado.Name))
-            else
-                warn("MagN Hub: Não há lotes vazios disponíveis neste servidor para duplicar!")
-            end
-        end)
+        return
     end
+
+    -- Passo 1: Informa ao servidor local que você está liberando o lote atual para limpar o nome da casa
+    -- Mudamos o estado da propriedade que diz se você já possui uma casa registrada
+    pcall(function()
+        if Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("HouseGui") then
+            -- Engana a sua própria interface para liberar os botões de compra
+            local CooldownOrOwn = Player.PlayerGui.HouseGui:FindFirstChild("OwnHouse") or Player.PlayerGui.HouseGui:FindFirstChild("HasHouse")
+            if CooldownOrOwn then
+                CooldownOrOwn.Value = false
+            end
+        end
+        
+        -- Envia o sinal falso de remoção do registro para limpar o ID sem apagar os blocos da casa antiga
+        HouseRemote:FireServer("ClearHouseOwner", Player.Name)
+    end)
+
+    -- Passo 2: Delay sutil (wait) extremamente rápido para o jogo computar que você "não tem casa"
+    task.wait(0.1)
+
+    -- Notificação de sucesso na interface do MagN Hub
+    if RedzLibrary and RedzLibrary.SetNotification then
+        RedzLibrary:SetNotification({"MagN Hub", "Sucesso! Registro removido. Pegue uma nova casa!", 4})
+    end
+end
+end
 })
 
 local RunService = game:GetService("RunService")
