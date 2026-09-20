@@ -1177,27 +1177,48 @@ end
 -- ===================================================================
 -- FUNÇÃO DO FLING BOAT COM PREVISÃO DE MOVIMENTO (PREDICTION)
 -- ===================================================================
-local function ExecuteFlingBoat(target)
+local PhysicsService = game:GetService("PhysicsService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+-- Função principal integrada com o seu script de forças
+local function ExecuteFlingBoat(targetPlayer)
     local Player = game.Players.LocalPlayer
     local Character = Player.Character
     local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-    local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-    local Workspace = game:GetService("Workspace")
+    local PRootpart = Character and Character:FindFirstChild("HumanoidRootPart")
     local Vehicles = Workspace:FindFirstChild("Vehicles")
-    local PhysicsService = game:GetService("PhysicsService")
 
-    if not Humanoid or not RootPart then
+    -- Validações do LocalPlayer
+    if not Humanoid or not PRootpart then
         if RedzLibrary and RedzLibrary.SetNotification then
             RedzLibrary:SetNotification({"MagN Hub", "Erro: Localplayer ou personagem não encontrado!", 4})
         end
         return
     end
 
-    -- Função interna para spawnar o barco do Brookhaven
+    -- Validação do Alvo (Target)
+    if not targetPlayer or not targetPlayer.Character then
+        if RedzLibrary and RedzLibrary.SetNotification then
+            RedzLibrary:SetNotification({"MagN Hub", "Erro: Nenhum alvo selecionado para o Fling!", 4})
+        end
+        return
+    end
+
+    local TargetC = targetPlayer.Character
+    local TargetRP = TargetC and TargetC:FindFirstChild("HumanoidRootPart")
+    local TargetH = TargetC and TargetC:FindFirstChildOfClass("Humanoid")
+
+    if not TargetRP or not TargetH or TargetH.Health <= 0 then
+        return 
+    end
+
+    -- Função interna para spawnar o barco do Brookhaven caso necessário
     local function spawnBoat()
-        RootPart.CFrame = CFrame.new(1754, -2, 58)
+        PRootpart.CFrame = CFrame.new(1754, -2, 58)
         task.wait(0.4)
-        local Remote = game:GetService("ReplicatedStorage").RE:FindFirstChild("1Ca1r")
+        local Remote = ReplicatedStorage.RE:FindFirstChild("1Ca1r")
         if Remote then
             Remote:FireServer("PickingBoat", "MilitaryBoatFree")
         end
@@ -1225,28 +1246,13 @@ local function ExecuteFlingBoat(target)
     if Humanoid.SeatPart ~= Seat then
         repeat 
             task.wait(0.05)
-            RootPart.CFrame = Seat.CFrame * CFrame.new(0, 1, 0)
+            PRootpart.CFrame = Seat.CFrame * CFrame.new(0, 1, 0)
         until Humanoid.SeatPart == Seat or not flingBoatAtivo
-    end
-
-    if not targetPlayer or not targetPlayer.Character then
-        if RedzLibrary and RedzLibrary.SetNotification then
-            RedzLibrary:SetNotification({"MagN Hub", "Erro: Nenhum alvo selecionado!", 4})
-        end
-        return
-    end
-
-    local TargetC = targetPlayer.Character
-    local TargetRP = TargetC and TargetC:FindFirstChild("HumanoidRootPart")
-    local TargetH = TargetC and TargetC:FindFirstChildOfClass("Humanoid")
-
-    if not TargetRP or not TargetH or TargetH.Health <= 0 then
-        return 
     end
 
     local chassi = PCar.PrimaryPart or Seat
 
-    -- Configuração de Colisão (O barco DEVE colidir com o alvo)
+    -- Configuração de Colisão (O barco DEVE colidir com o alvo, mas ignora você)
     pcall(function()
         PhysicsService:RegisterCollisionGroup("PlayersGroup")
         PhysicsService:RegisterCollisionGroup("BoatGroup")
@@ -1263,48 +1269,48 @@ local function ExecuteFlingBoat(target)
         end
     end)
 
-    -- AUTOMATIZAÇÃO DA SUA FORÇA PERFEITA: Injeta direto no SEU HumanoidRootPart
-    local bAV = RootPart:FindFirstChild("FlingAngular")
-    if not bAV then
-        bAV = Instance.new("BodyAngularVelocity")
-        bAV.Name = "FlingAngular"
-        bAV.Parent = RootPart
+    -- SEU SCRIPT DE FORÇAS: Injeta de forma automatizada e limpa no PRootpart
+    local Force1 = PRootpart:FindFirstChild("FlingAngular")
+    if not Force1 then
+        Force1 = Instance.new("BodyAngularVelocity")
+        Force1.Name = "FlingAngular"
+        Force1.Parent = PRootpart
     end
     
-    -- Configuração idêntica ao seu teste manual de sucesso
-    bAV.MaxTorque = Vector3.new(0, math.huge, 0)
-    bAV.AngularVelocity = Vector3.new(999, 999, 999)
+    -- Suas configurações exatas
+    Force1.MaxTorque = Vector3.new(0, 99999999999999, 0)
+    Force1.angularvelocity = Vector3.new(999, 999, 999)
 
     local angle = 0
 
-    -- Loop principal do Fling
+    -- Loop principal do Fling usando o seu método
     while flingBoatAtivo and PCar and PCar.Parent and TargetRP and TargetRP.Parent and TargetH.Health > 0 and Humanoid.SeatPart == Seat do
-        game:GetService("RunService").Heartbeat:Wait()
+        RunService.Heartbeat:Wait()
         
         angle = (angle + 90) % 360
         
-        -- Garante que a força permaneça injetada no seu corpo durante o teleporte
-        bAV.AngularVelocity = Vector3.new(999, 999, 999)
+        -- Mantém a velocidade da força atualizada no loop
+        Force1.angularvelocity = Vector3.new(999, 999, 999)
         
-        -- Cálculo de antecipação do movimento do alvo (Prediction)
-        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity or Vector3.new(0,0,0)
+        -- Sistema de Prediction baseado na velocidade do alvo
+        local alvoVelocidade = TargetRP.AssemblyLinearVelocity or TargetRP.Velocity or Vector3.new(0, 0, 0)
         local pos_x = TargetRP.Position.X + (alvoVelocidade.X * 0.15)
         local pos_y = TargetRP.Position.Y + (alvoVelocidade.Y * 0.15)
         local pos_z = TargetRP.Position.Z + (alvoVelocidade.Z * 0.15)
         
         if PCar and chassi and flingBoatAtivo then
-            -- Teleporta o chassi do barco direto na posição calculada do Alvo
+            -- Teleporta o barco direto no alvo aplicando a rotação Y
             local rotacaoMaluco = CFrame.Angles(0, math.rad(angle), 0)
             chassi.CFrame = CFrame.new(Vector3.new(pos_x, pos_y, pos_z)) * rotacaoMaluco
         end
     end
 
-    -- Limpeza total ao desligar a função no Hub
-    if bAV then 
-        bAV:Destroy() 
+    -- Limpeza total e segura da força ao desligar o loop
+    if Force1 then 
+        Force1:Destroy() 
     end
-    if RootPart then
-        RootPart.AssemblyAngularVelocity = Vector3.new(0,0,0)
+    if PRootpart then
+        PRootpart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end
 end
 
