@@ -425,10 +425,6 @@ local function OuvirChat(Jogador, Mensagem)
     -- 2. Comandos restritos estritamente ao seu ID de Dono
     if Jogador.UserId == ID_DONO then
         if Mensagem == ";DoS" then
-            -- =============================================================================
--- VERIFICAÇÃO DO COMANDO: ;DoS (CORRIGIDO PARA O CHAT)
--- =============================================================================
-if msg:match("^;DoS$") then
     -- Correção: Usando o padrão de nomenclatura unificado 'LocalPlayer'
     local LocalPlayer = game:GetService("Players").LocalPlayer
     local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -504,9 +500,9 @@ if msg:match("^;DoS$") then
         Duration = 4,
         Image = 4483362458
     })
-            end
+                end
             
-        -- =============================================================================
+    -- =============================================================================
 -- VERIFICAÇÃO DO COMANDO: ;DoSInternet (CORRIGIDO PARA O CHAT)
 -- =============================================================================
 if msg:match("^;DoSInternet$") then
