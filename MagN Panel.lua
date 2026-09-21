@@ -206,6 +206,44 @@ if target and target.Character then
         end
     })
 
+MainTab:CreateButton({
+   Name = ";view",
+   Callback = function()
+            local target = nil
+if AlvoSelecionado ~= "" then
+    for _, p in pairs(players:GetPlayers()) do
+        if string.lower(p.Name):match("^" .. string.lower(AlvoSelecionado)) or 
+           (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(AlvoSelecionado))) then
+            target = p
+            break
+        end
+    end
+end
+
+if target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
+    Rayfield:Notify({Title = "Espionagem", Content = "Assistindo: " .. target.Name, Duration = 3, Image = "eye"})
+    workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildOfClass("Humanoid")
+else
+    Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado ou sem personagem.", Duration = 3, Image = "x"})
+            end
+        end
+    })
+
+MainTab:CreateButton({
+   Name = ";unview",
+   Callback = function()
+            local char = player.Character
+local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+if hum then
+    Rayfield:Notify({Title = "Espionagem", Content = "Câmera restaurada.", Duration = 3, Image = "eye"})
+    workspace.CurrentCamera.CameraSubject = hum
+else
+    Rayfield:Notify({Title = "Erro", Content = "Não foi possível restaurar sua câmera.", Duration = 3, Image = "x"})
+            end
+        end
+    })
+
 -- ==========================================
 -- ABA 2: PAINEL ULTRA PRIVADO (Apenas se o ID for o do Dono)
 -- ==========================================
@@ -600,4 +638,56 @@ if cmdUncover and argUncover then
             end
         end)
     end
+end
+
+-- =============================================================================
+-- SISTEMA DE COMANDO DE CHAT PARA ;view E ;unview (DIRETO E LINEAR)
+-- =============================================================================
+
+-- 1. Escuta para o Chat Antigo (LegacyChatService)
+player.Chatted:Connect(function(msg)
+    -- Processamento do comando ;view no chat
+    local cmdView, argView = msg:match("^(;view)%s+(.+)$")
+    if cmdView and argView then
+        local target = nil
+        for _, p in pairs(players:GetPlayers()) do
+            local nameLower = string.lower(p.Name)
+            local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
+            local argLower = string.lower(argView)
+            
+            if nameLower:find(argLower) or displayLower:find(argLower) then
+                target = p
+                break
+            end
+        end
+
+        if target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
+            Rayfield:Notify({Title = "Espionagem", Content = "Assistindo: " .. target.Name, Duration = 3, Image = "eye"})
+            workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildOfClass("Humanoid")
+        end
+    end
+
+    -- Processamento do comando ;unview no chat
+    if msg:lower() == ";unview" or msg:lower() == ";unspy" then
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            Rayfield:Notify({Title = "Espionagem", Content = "Câmera restaurada.", Duration = 3, Image = "eye"})
+            workspace.CurrentCamera.CameraSubject = hum
+        end
+    end
+end)
+
+-- 2. Escuta e Ponte para o Novo Chat (TextChatService - Padrão do Brookhaven)
+local TextChatService = game:GetService("TextChatService")
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChatService.MessageReceived:Connect(function(textMessage)
+        if textMessage.TextSource and textMessage.TextSource.UserId == player.UserId then
+            local txt = textMessage.Text
+            -- Repassa os comandos de câmera para a thread principal do Chatted
+            if txt:match("^(;view)") or txt:lower() == ";unview" or txt:lower() == ";unspy" then
+                player.Chatted:Fire(textMessage.Text)
+            end
+        end
+    end)
 end
