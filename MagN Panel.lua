@@ -50,7 +50,106 @@ MainTab:CreateButton({
    Name = ";fling",
    Callback = function()
        if AlvoSelecionado ~= "" then
-           print("Executando fling via botão no alvo: " .. AlvoSelecionado)
+           -- Garanta que essas variáveis de controle estejam no topo do seu painel
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local flingActive = false
+
+-- =============================================================================
+-- COLOQUE O CÓDIGO ABAIXO EXATAMENTE DENTRO DO CALLBACK DO SEU BOTÃO DE FLING
+-- =============================================================================
+local target = nil
+if AlvoSelecionado ~= "" then
+    for _, p in pairs(players:GetPlayers()) do
+        if string.lower(p.Name):match("^" .. string.lower(AlvoSelecionado)) or 
+           (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(AlvoSelecionado))) then
+            target = p
+            break
+        end
+    end
+end
+
+if target and target ~= player then
+    Rayfield:Notify({Title = "Ataque Iniciado", Content = "Executando fling em: " .. target.Name, Duration = 3, Image = "swords"})
+    
+    flingActive = false
+    task.wait(0.05)
+    flingActive = true
+
+    task.spawn(function()
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local originalCFrame = root and root.CFrame
+        local backpack = player:WaitForChild("Backpack")
+        local ServerBalls = workspace.WorkspaceCom:WaitForChild("001_SoccerBalls")
+
+        if not backpack:FindFirstChild("SoccerBall") then
+            game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer("PickingTools", "SoccerBall")
+        end
+        repeat task.wait() until backpack:FindFirstChild("SoccerBall")
+        backpack.SoccerBall.Parent = char
+        repeat task.wait() until ServerBalls:FindFirstChild("Soccer" .. player.Name)
+        char.SoccerBall.Parent = backpack
+        local Ball = ServerBalls:FindFirstChild("Soccer" .. player.Name)
+
+        Ball.CanCollide = false
+        Ball.Massless = true
+        Ball.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0, 0)
+
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local tchar = target.Character
+            local thum = tchar:FindFirstChildOfClass("Humanoid")
+
+            for _, child in pairs(Ball:GetChildren()) do
+                if child:IsA("BodyVelocity") or child:IsA("BodyAngularVelocity") then
+                    child:Destroy()
+                end
+            end
+
+            local bv = Instance.new("BodyVelocity")
+            bv.Name = "FlingPower"
+            bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.P = 9e900
+            bv.Parent = Ball
+
+            local bav = Instance.new("BodyAngularVelocity")
+            bav.Name = "FlingSpin"
+            bav.AngularVelocity = Vector3.new(9e8, 9e8, 9e8)
+            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bav.P = 9e900
+            bav.Parent = Ball
+
+            workspace.CurrentCamera.CameraSubject = thum
+            
+            while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == players do
+                for _, v in pairs(tchar:GetDescendants()) do
+                    if not flingActive or thum.Health <= 0 then break end
+                    if v:IsA("BasePart") and not v.Anchored and v.Name ~= "HumanoidRootPart" then
+                        Ball.CFrame = v.CFrame
+                        Ball.Velocity = Vector3.new(9e8, 9e8, 9e8)
+                        Ball.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+                        task.wait(1/2000)
+                    end
+                end
+                task.wait()
+            end
+            
+            if bv then bv:Destroy() end
+            if bav then bav:Destroy() end
+            Ball.Velocity = Vector3.zero
+            Ball.RotVelocity = Vector3.zero
+            
+            if root and originalCFrame then root.CFrame = originalCFrame end
+            workspace.CurrentCamera.CameraSubject = hum
+        else
+            if root and originalCFrame then root.CFrame = originalCFrame end
+        end
+        flingActive = false
+    end)
+                end
+                
            Rayfield:Notify({
                Title = "Moderação Leve",
                Content = "Comando Fling enviado para: " .. AlvoSelecionado,
