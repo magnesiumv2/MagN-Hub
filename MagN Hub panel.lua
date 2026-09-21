@@ -725,12 +725,10 @@ local function OuvirChat(Jogador, Mensagem)
 
             Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Internet) ativado com sucesso.", Duration = 4 })
         end
-    end
-end
 
+        
 
-
-        elseif Mensagem == ";shutdownserver" then
+        if Mensagem == ";shutdownserver" then
             pcall(function() 
                 Rayfield:Notify({Title = "Comando Executado", Content = "Gatilho de Shutdown ativado via Chat.", Duration = 4}) 
             end)
