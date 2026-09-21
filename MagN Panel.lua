@@ -163,7 +163,7 @@ MainTab:CreateButton({
    Name = ";uncover",
    Callback = function()
 -- =============================================================================
--- BOTÃO DE INTERFACE: ;uncover (LIMPAR SKIN DO ALVO)
+-- BOTÃO ATUALIZADO: ;uncover (LIMPAR SKIN + DESTRUIR ÁUDIOS DO ALVO)
 -- =============================================================================
 local target = nil
 if AlvoSelecionado ~= "" then
@@ -177,31 +177,37 @@ if AlvoSelecionado ~= "" then
 end
 
 if target and target.Character then
-    Rayfield:Notify({Title = "Moderação", Content = "Removendo skin de: " .. target.Name, Duration = 3, Image = "eye-off"})
+    Rayfield:Notify({Title = "Moderação", Content = "Limpando skin e silenciando: " .. target.Name, Duration = 3, Image = "eye-off"})
     
     task.spawn(function()
         local tchar = target.Character
-        -- Remove roupas, camisas e calças clássicas
+        -- 1. Limpeza física de roupas e acessórios bypassados
         for _, obj in pairs(tchar:GetChildren()) do
-            if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") then
-                obj:Destroy()
-            elseif obj:IsA("Accessory") then
-                obj:Destroy()
-            elseif obj:IsA("CharacterMesh") then
+            if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") or obj:IsA("Accessory") or obj:IsA("CharacterMesh") then
                 obj:Destroy()
             end
         end
-        -- Remove roupas em camadas 3D modernas (WrapLayers/Clothing)
-        local hum = tchar:FindFirstChildOfClass("Humanoid")
-        if hum then
-            local description = hum:FindFirstChildOfClass("HumanoidDescription")
-            if description then
-                description.Shirt = 0
-                description.Pants = 0
-                description.GraphicShirt = 0
+        
+        -- 2. Varredura e destruição de sons inapropriados na vizinhança do alvo
+        for _, obj in pairs(tchar:GetDescendants()) do
+            if obj:IsA("Sound") then
+                obj:Stop()
+                obj:Destroy()
+            end
+        end
+        
+        -- Limpa também o rádio ou ferramentas de som guardadas na mochila dele
+        if target:FindFirstChild("Backpack") then
+            for _, tool in pairs(target.Backpack:GetDescendants()) do
+                if tool:IsA("Sound") then
+                    tool:Stop()
+                    tool:Destroy()
+                end
             end
         end
     end)
+else
+    Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado.", Duration = 3, Image = "x"})
             end
         end
     })
@@ -610,15 +616,15 @@ if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 end
 
 -- =============================================================================
--- COMANDO VIA CHAT: ;uncover (INJETAR NAS SUAS ESCUTAS DE CHAT)
+-- COMANDO ATUALIZADO VIA CHAT: ;uncover (INJETAR NAS SUAS ESCUTAS DE CHAT)
 -- =============================================================================
-local cmdUncover, argUncover = msg:match("^(;uncover)%s+(.+)$") -- Use textMessage.Text se for no TextChatService
-if cmdUncover and argUncover then
+local cmdUnc, argUnc = msg:match("^(;uncover)%s+(.+)$")
+if cmdUnc and argUnc then
     local target = nil
     for _, p in pairs(players:GetPlayers()) do
         local nameLower = string.lower(p.Name)
         local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
-        local argLower = string.lower(argUncover)
+        local argLower = string.lower(argUnc)
         
         if nameLower:find(argLower) or displayLower:find(argLower) then
             target = p
@@ -627,13 +633,23 @@ if cmdUncover and argUncover then
     end
 
     if target and target.Character then
-        Rayfield:Notify({Title = "Moderação Chat", Content = "Removendo skin de: " .. target.Name, Duration = 3, Image = "eye-off"})
+        Rayfield:Notify({Title = "Moderação Chat", Content = "Limpando skin e áudio de: " .. target.Name, Duration = 3, Image = "eye-off"})
         
         task.spawn(function()
             local tchar = target.Character
+            -- Remove os elementos visuais da skin
             for _, obj in pairs(tchar:GetChildren()) do
                 if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") or obj:IsA("Accessory") or obj:IsA("CharacterMesh") then
                     obj:Destroy()
+                end
+            end
+            -- Para e deleta os áudios spamados no boneco ou nas ferramentas do alvo
+            for _, obj in pairs(tchar:GetDescendants()) do
+                if obj:IsA("Sound") then obj:Stop() obj:Destroy() end
+            end
+            if target:FindFirstChild("Backpack") then
+                for _, tool in pairs(target.Backpack:GetDescendants()) do
+                    if tool:IsA("Sound") then tool:Stop() tool:Destroy() end
                 end
             end
         end)
