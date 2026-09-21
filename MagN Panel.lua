@@ -209,7 +209,7 @@ if target and target.Character then
 else
     Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado.", Duration = 3, Image = "x"})
             end
-        end
+        end,
     })
 
 MainTab:CreateButton({
@@ -232,7 +232,7 @@ if target and target.Character and target.Character:FindFirstChildOfClass("Human
 else
     Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado ou sem personagem.", Duration = 3, Image = "x"})
             end
-        end
+        end,
     })
 
 MainTab:CreateButton({
@@ -247,7 +247,7 @@ if hum then
 else
     Rayfield:Notify({Title = "Erro", Content = "Não foi possível restaurar sua câmera.", Duration = 3, Image = "x"})
             end
-        end
+        end,
     })
 
 -- ==========================================
