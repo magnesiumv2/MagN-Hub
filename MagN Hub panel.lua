@@ -728,6 +728,8 @@ local function OuvirChat(Jogador, Mensagem)
     end
 end
 
+
+
         elseif Mensagem == ";shutdownserver" then
             pcall(function() 
                 Rayfield:Notify({Title = "Comando Executado", Content = "Gatilho de Shutdown ativado via Chat.", Duration = 4}) 
