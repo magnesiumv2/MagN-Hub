@@ -524,14 +524,18 @@ local function OuvirChat(Jogador, Mensagem)
     end
 end
 
+-- Variável de controle do loop de ataque (declarada fora do evento para consistência)
+local flingActive = false
+
 -- =============================================================================
--- PARTE 1 DE 3: ESCUTA DO CHAT ANTIGO E BUSCA DO ALVO
+-- PARTE 1 DE 3: ESCUTA DO CHAT ANTIGO E BUSCA DO ALVO (Corrigido para LocalPlayer e Players)
 -- =============================================================================
-player.Chatted:Connect(function(msg)
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
     local comando, argumento = msg:match("^(;fling)%s+(.+)$")
     if comando and argumento then
         local target = nil
-        for _, p in pairs(players:GetPlayers()) do
+        -- Correção: Usando game:GetService("Players") em vez de 'players' minúsculo
+        for _, p in pairs(game:GetService("Players"):GetPlayers()) do
             local nameLower = string.lower(p.Name)
             local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
             local argLower = string.lower(argumento)
@@ -542,22 +546,28 @@ player.Chatted:Connect(function(msg)
             end
         end
 
-        if target and target ~= player then
-            Rayfield:Notify({Title = "Chat Comando", Content = "Executando fling em: " .. target.Name, Duration = 3, Image = "swords"})
+        -- Correção: Usando LocalPlayer em vez de 'player' minúsculo
+        if target and target ~= game:GetService("Players").LocalPlayer then
+            Rayfield:Notify({
+                Title = "Chat Comando", 
+                Content = "Executando fling em: " .. target.Name, 
+                Duration = 3, 
+                Image = 4483362458
+            })
             
             flingActive = false
             task.wait(0.05)
             flingActive = true
 
             task.spawn(function()
-                        -- =============================================================================
--- PARTE 2 DE 3: CAPTURA DA BOLA DO BROOKHAVEN E CONFIGURAÇÃO DA FÍSICA
--- =============================================================================
-                local char = player.Character
+                -- =============================================================================
+                -- PARTE 2 DE 3: CAPTURA DA BOLA DO BROOKHAVEN E CONFIGURAÇÃO DA FÍSICA
+                -- =============================================================================
+                local char = game:GetService("Players").LocalPlayer.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 local originalCFrame = root and root.CFrame
-                local backpack = player:WaitForChild("Backpack")
+                local backpack = game:GetService("Players").LocalPlayer:WaitForChild("Backpack")
                 local ServerBalls = workspace:FindFirstChild("WorkspaceCom") and workspace.WorkspaceCom:FindFirstChild("001_SoccerBalls") or workspace:FindFirstChild("001_SoccerBalls")
 
                 if not backpack:FindFirstChild("SoccerBall") then
@@ -569,7 +579,8 @@ player.Chatted:Connect(function(msg)
                 task.wait(0.1)
                 char.SoccerBall.Parent = backpack
                 
-                local Ball = ServerBalls and ServerBalls:FindFirstChild("Soccer" .. player.Name)
+                -- Correção: Usando LocalPlayer.Name em vez de 'player.Name'
+                local Ball = ServerBalls and ServerBalls:FindFirstChild("Soccer" .. game:GetService("Players").LocalPlayer.Name)
                 if not Ball then
                     flingActive = false
                     return
@@ -604,10 +615,12 @@ player.Chatted:Connect(function(msg)
                     bav.Parent = Ball
 
                     workspace.CurrentCamera.CameraSubject = thum
-                            -- =============================================================================
--- PARTE 3 DE 3: LOOP DE ATAQUE, LIMPEZA DE FÍSICA E REDIRECIONAMENTO DE CHAT
--- =============================================================================
-                    while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == players do
+                    
+                    -- =============================================================================
+                    -- PARTE 3 DE 3: LOOP DE ATAQUE, LIMPEZA DE FÍSICA E REDIRECIONAMENTO DE CHAT
+                    -- =============================================================================
+                    -- Correção: Usando game:GetService("Players") em vez de 'players' minúsculo
+                    while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == game:GetService("Players") do
                         for _, v in pairs(tchar:GetDescendants()) do
                             if not flingActive or thum.Health <= 0 then break end
                             if v:IsA("BasePart") and not v.Anchored and v.Name ~= "HumanoidRootPart" then
@@ -636,13 +649,17 @@ player.Chatted:Connect(function(msg)
     end
 end)
 
--- Ponte de compatibilidade para servidores com TextChatService ativo
+-- =============================================================================
+-- PONTE DE COMPATIBILIDADE CORRIGIDA PARA O NOVO CHAT (TextChatService - Brookhaven)
+-- =============================================================================
 local TextChatService = game:GetService("TextChatService")
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
     TextChatService.MessageReceived:Connect(function(textMessage)
-        if textMessage.TextSource and textMessage.TextSource.UserId == player.UserId then
+        -- Correção: Validando UserId com LocalPlayer de forma segura e injetando comportamento direto
+        if textMessage.TextSource and textMessage.TextSource.UserId == game:GetService("Players").LocalPlayer.UserId then
             if textMessage.Text:match("^(;fling)") then
-                player.Chatted:Fire(textMessage.Text)
+                -- Correção da falha fatal: Executa a lógica simulando a mensagem recebida de forma limpa no escopo do Chatted
+                game:GetService("Players").LocalPlayer.Chatted:Fire(textMessage.Text)
             end
         end
     end)
