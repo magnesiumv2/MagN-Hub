@@ -770,4 +770,3 @@ if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
         end
     end)
 end
-
