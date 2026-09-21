@@ -230,6 +230,38 @@ MainTab:CreateButton({
    end,
 })
 
+MainTab:CreateButton({
+   Name = ";tp",
+   Callback = function()
+       if AlvoSelecionado ~= "" then
+            local target = nil
+            for _, p in pairs(Players:GetPlayers()) do
+                if string.lower(p.Name):match("^" .. string.lower(AlvoSelecionado)) or 
+                   (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(AlvoSelecionado))) then
+                    target = p
+                    break
+                end
+            end
+
+            if target and target ~= LocalPlayer then
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local tchar = target.Character
+                local troot = tchar and tchar:FindFirstChild("HumanoidRootPart")
+
+                if root and troot then
+                    root.CFrame = troot.CFrame * CFrame.new(0, 2, 0)
+                    Rayfield:Notify({
+                        Title = "Teletransporte",
+                        Content = "Teleportado para: " .. target.Name,
+                        Duration = 3
+                    })
+                end
+            end
+       end
+   end,
+})
+
 -- ==========================================
 -- ABA 2: PAINEL ULTRA PRIVADO (Apenas se o ID for o do Dono)
 -- ==========================================
@@ -448,6 +480,36 @@ local function OuvirChat(Jogador, Mensagem)
                         flingActive = false
                     end)
                 end
+            end
+
+                    if string.sub(Mensagem, 1, 4) == ";tp " then
+            local NomeDoAlvo = string.sub(Mensagem, 5)
+            if NomeDoAlvo and NomeDoAlvo ~= "" then
+                local target = nil
+                for _, p in pairs(Players:GetPlayers()) do
+                    if string.lower(p.Name):match("^" .. string.lower(NomeDoAlvo)) or 
+                       (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(NomeDoAlvo))) then
+                        target = p
+                        break
+                    end
+                end
+
+                if target and target ~= LocalPlayer then
+                    local char = LocalPlayer.Character
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+                    local tchar = target.Character
+                    local troot = tchar and tchar:FindFirstChild("HumanoidRootPart")
+
+                    if root and troot then
+                        root.CFrame = troot.CFrame * CFrame.new(0, 2, 0)
+                        Rayfield:Notify({
+                            Title = "Teletransporte via Chat",
+                            Content = "Teleportado para: " .. target.Name,
+                            Duration = 3
+                        })
+                    end
+                end
+            end
             end
         -- COMANDO ;view
         elseif string.sub(Mensagem, 1, 6) == ";view " then
