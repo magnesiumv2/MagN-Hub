@@ -774,11 +774,11 @@ local function OuvirChat(Jogador, Mensagem)
 end
 
 -- Conecta os loops de eventos ao Chat do Roblox
-for _, player in ipairs(Players:GetPlayers()) do
-    player.Chatted:Connect(function(msg) OuvirChat(player, msg) end)
+for _, Player in ipairs(Players:GetPlayers()) do
+    Player.Chatted:Connect(function(msg) OuvirChat(Player, msg) end)
 end
 
-Players.PlayerAdded:Connect(function(player)
-    player.Chatted:Connect(function(msg) OuvirChat(player, msg) end)
+Players.PlayerAdded:Connect(function(Player)
+    Player.Chatted:Connect(function(msg) OuvirChat(Player, msg) end)
 end)
 
