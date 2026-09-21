@@ -771,6 +771,9 @@ end
                     end
                 end
             end)
+        end
+    end
+end
 
 -- Conecta os loops de eventos ao Chat do Roblox
 for _, player in ipairs(Players:GetPlayers()) do
