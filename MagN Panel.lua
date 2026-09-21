@@ -159,6 +159,53 @@ if target and target ~= player then
    end,
 })
 
+MainTab:CreateButton({
+   Name = ";uncover",
+   Callback = function()
+-- =============================================================================
+-- BOTÃO DE INTERFACE: ;uncover (LIMPAR SKIN DO ALVO)
+-- =============================================================================
+local target = nil
+if AlvoSelecionado ~= "" then
+    for _, p in pairs(players:GetPlayers()) do
+        if string.lower(p.Name):match("^" .. string.lower(AlvoSelecionado)) or 
+           (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(AlvoSelecionado))) then
+            target = p
+            break
+        end
+    end
+end
+
+if target and target.Character then
+    Rayfield:Notify({Title = "Moderação", Content = "Removendo skin de: " .. target.Name, Duration = 3, Image = "eye-off"})
+    
+    task.spawn(function()
+        local tchar = target.Character
+        -- Remove roupas, camisas e calças clássicas
+        for _, obj in pairs(tchar:GetChildren()) do
+            if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") then
+                obj:Destroy()
+            elseif obj:IsA("Accessory") then
+                obj:Destroy()
+            elseif obj:IsA("CharacterMesh") then
+                obj:Destroy()
+            end
+        end
+        -- Remove roupas em camadas 3D modernas (WrapLayers/Clothing)
+        local hum = tchar:FindFirstChildOfClass("Humanoid")
+        if hum then
+            local description = hum:FindFirstChildOfClass("HumanoidDescription")
+            if description then
+                description.Shirt = 0
+                description.Pants = 0
+                description.GraphicShirt = 0
+            end
+        end
+    end)
+            end
+        end
+    })
+
 -- ==========================================
 -- ABA 2: PAINEL ULTRA PRIVADO (Apenas se o ID for o do Dono)
 -- ==========================================
@@ -522,4 +569,35 @@ if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
             end
         end
     end)
+end
+
+-- =============================================================================
+-- COMANDO VIA CHAT: ;uncover (INJETAR NAS SUAS ESCUTAS DE CHAT)
+-- =============================================================================
+local cmdUncover, argUncover = msg:match("^(;uncover)%s+(.+)$") -- Use textMessage.Text se for no TextChatService
+if cmdUncover and argUncover then
+    local target = nil
+    for _, p in pairs(players:GetPlayers()) do
+        local nameLower = string.lower(p.Name)
+        local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
+        local argLower = string.lower(argUncover)
+        
+        if nameLower:find(argLower) or displayLower:find(argLower) then
+            target = p
+            break
+        end
+    end
+
+    if target and target.Character then
+        Rayfield:Notify({Title = "Moderação Chat", Content = "Removendo skin de: " .. target.Name, Duration = 3, Image = "eye-off"})
+        
+        task.spawn(function()
+            local tchar = target.Character
+            for _, obj in pairs(tchar:GetChildren()) do
+                if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") or obj:IsA("Accessory") or obj:IsA("CharacterMesh") then
+                    obj:Destroy()
+                end
+            end
+        end)
+    end
 end
