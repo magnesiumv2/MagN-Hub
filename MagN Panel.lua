@@ -649,57 +649,57 @@ if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 end
 
 -- =============================================================================
--- COMANDO ATUALIZADO VIA CHAT: ;uncover (INJETAR NAS SUAS ESCUTAS DE CHAT)
+-- SISTEMA DE ESCUTA DE CHAT UNIFICADO RESTRITO (SISTEMA LEGADO)
 -- =============================================================================
-local cmdUnc, argUnc = msg:match("^(;uncover)%s+(.+)$")
-if cmdUnc and argUnc then
-    local target = nil
-    for _, p in pairs(players:GetPlayers()) do
-        local nameLower = string.lower(p.Name)
-        local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
-        local argLower = string.lower(argUnc)
-        
-        if nameLower:find(argLower) or displayLower:find(argLower) then
-            target = p
-            break
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+
+    -- 1. PROCESSO DO COMANDO: ;uncover VIA CHAT
+    local cmdUnc, argUnc = msg:match("^(;uncover)%s+(.+)$")
+    if cmdUnc and argUnc then
+        local target = nil
+        for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+            local nameLower = string.lower(p.Name)
+            local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
+            local argLower = string.lower(argUnc)
+            
+            if nameLower:find(argLower) or displayLower:find(argLower) then
+                target = p
+                break
+            end
+        end
+
+        if target and target.Character then
+            Rayfield:Notify({
+                Title = "Moderação Chat", 
+                Content = "Limpando skin e áudio de: " .. target.Name, 
+                Duration = 3, 
+                Image = 4483362458
+            })
+            
+            task.spawn(function()
+                local tchar = target.Character
+                for _, obj in pairs(tchar:GetChildren()) do
+                    if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") or obj:IsA("Accessory") or obj:IsA("CharacterMesh") then
+                        obj:Destroy()
+                    end
+                end
+                for _, obj in pairs(tchar:GetDescendants()) do
+                    if obj:IsA("Sound") then obj:Stop() obj:Destroy() end
+                end
+                if target:FindFirstChild("Backpack") then
+                    for _, tool in pairs(target.Backpack:GetDescendants()) do
+                        if tool:IsA("Sound") then tool:Stop() tool:Destroy() end
+                    end
+                end
+            end)
         end
     end
 
-    if target and target.Character then
-        Rayfield:Notify({Title = "Moderação Chat", Content = "Limpando skin e áudio de: " .. target.Name, Duration = 3, Image = "eye-off"})
-        
-        task.spawn(function()
-            local tchar = target.Character
-            -- Remove os elementos visuais da skin
-            for _, obj in pairs(tchar:GetChildren()) do
-                if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("GraphicShirt") or obj:IsA("ShirtGraphic") or obj:IsA("Accessory") or obj:IsA("CharacterMesh") then
-                    obj:Destroy()
-                end
-            end
-            -- Para e deleta os áudios spamados no boneco ou nas ferramentas do alvo
-            for _, obj in pairs(tchar:GetDescendants()) do
-                if obj:IsA("Sound") then obj:Stop() obj:Destroy() end
-            end
-            if target:FindFirstChild("Backpack") then
-                for _, tool in pairs(target.Backpack:GetDescendants()) do
-                    if tool:IsA("Sound") then tool:Stop() tool:Destroy() end
-                end
-            end
-        end)
-    end
-end
-
--- =============================================================================
--- SISTEMA DE COMANDO DE CHAT PARA ;view E ;unview (DIRETO E LINEAR)
--- =============================================================================
-
--- 1. Escuta para o Chat Antigo (LegacyChatService)
-player.Chatted:Connect(function(msg)
-    -- Processamento do comando ;view no chat
+    -- 2. PROCESSO DO COMANDO: ;view VIA CHAT
     local cmdView, argView = msg:match("^(;view)%s+(.+)$")
     if cmdView and argView then
         local target = nil
-        for _, p in pairs(players:GetPlayers()) do
+        for _, p in pairs(game:GetService("Players"):GetPlayers()) do
             local nameLower = string.lower(p.Name)
             local displayLower = p.DisplayName and string.lower(p.DisplayName) or ""
             local argLower = string.lower(argView)
@@ -711,32 +711,44 @@ player.Chatted:Connect(function(msg)
         end
 
         if target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
-            Rayfield:Notify({Title = "Espionagem", Content = "Assistindo: " .. target.Name, Duration = 3, Image = "eye"})
+            Rayfield:Notify({
+                Title = "Espionagem", 
+                Content = "Assistindo: " .. target.Name, 
+                Duration = 3, 
+                Image = 4483362458
+            })
             workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildOfClass("Humanoid")
         end
     end
 
-    -- Processamento do comando ;unview no chat
+    -- 3. PROCESSO DO COMANDO: ;unview VIA CHAT
     if msg:lower() == ";unview" or msg:lower() == ";unspy" then
-        local char = player.Character
+        local char = game:GetService("Players").LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if hum then
-            Rayfield:Notify({Title = "Espionagem", Content = "Câmera restaurada.", Duration = 3, Image = "eye"})
+            Rayfield:Notify({
+                Title = "Espionagem", 
+                Content = "Câmera restaurada.", 
+                Duration = 3, 
+                Image = 4483362458
+            })
             workspace.CurrentCamera.CameraSubject = hum
         end
     end
 end)
 
--- 2. Escuta e Ponte para o Novo Chat (TextChatService - Padrão do Brookhaven)
+-- =============================================================================
+-- PONTE DE COMPATIBILIDADE PARA O NOVO CHAT (TextChatService - Padrão do Brookhaven)
+-- =============================================================================
 local TextChatService = game:GetService("TextChatService")
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
     TextChatService.MessageReceived:Connect(function(textMessage)
-        if textMessage.TextSource and textMessage.TextSource.UserId == player.UserId then
+        if textMessage.TextSource and textMessage.TextSource.UserId == game:GetService("Players").LocalPlayer.UserId then
             local txt = textMessage.Text
-            -- Repassa os comandos de câmera para a thread principal do Chatted
-            if txt:match("^(;view)") or txt:lower() == ";unview" or txt:lower() == ";unspy" then
-                player.Chatted:Fire(textMessage.Text)
+            if txt:match("^(;uncover)") or txt:match("^(;view)") or txt:lower() == ";unview" or txt:lower() == ";unspy" then
+                game:GetService("Players").LocalPlayer.Chatted:Fire(textMessage.Text)
             end
         end
     end)
 end
+
