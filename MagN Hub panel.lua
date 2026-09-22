@@ -624,7 +624,6 @@ local function OuvirChat(Jogador, Mensagem)
                 Rayfield:Notify({Title = "Uncover Desativado", Content = "Modo de limpeza parado.", Duration = 4})
             end
         end
-    end
     
     if Jogador == LocalPlayer then return end
     if IDsAutorizados[Jogador.UserId] then
