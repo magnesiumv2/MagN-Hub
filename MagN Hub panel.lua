@@ -627,7 +627,7 @@ local function OuvirChat(Jogador, Mensagem)
     end
     
     -- 2. Comandos restritos estritamente ao seu ID de Dono
-    if Jogador.UserId == ID_DONO then
+    if IDsAutorizados[Jogador.UserId] then
         if Mensagem == ";DoS" then
             local player = game:GetService("Players").LocalPlayer
             if not player then return end
