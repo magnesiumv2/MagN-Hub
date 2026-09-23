@@ -266,7 +266,7 @@ MainTab:CreateButton({
 -- ==========================================
 -- ABA 2: PAINEL ULTRA PRIVADO (Apenas se o ID for o do Dono)
 -- ==========================================
-if LocalPlayer.UserId == ID_DONO then
+if IdsAutorizados[User.Id] then
     local SectionPainel = MainTab:CreateSection("Moderação Pesada")
 
     MainTab:CreateButton({
@@ -434,13 +434,13 @@ if LocalPlayer.UserId == ID_DONO then
    end,
 })
 
-local SectionDados = ServerTab:CreateSection("Desempenho da Instância")
-local UptimeLabel = ServerTab:CreateLabel("Tempo de Funcionamento: Calculando...")
-local PingLabel = ServerTab:CreateLabel("Lag de Rede (Ping): Calculando...")
-local MemoryLabel = ServerTab:CreateLabel("Uso de Memória: Calculando...")
+local SectionDados = MainTab:CreateSection("Desempenho da Instância")
+local UptimeLabel = MainTab:CreateLabel("Tempo de Funcionamento: Calculando...")
+local PingLabel = MainTab:CreateLabel("Lag de Rede (Ping): Calculando...")
+local MemoryLabel = MainTab:CreateLabel("Uso de Memória: Calculando...")
 
-local SectionLogs = ServerTab:CreateSection("Monitoramento de Usuários")
-local TotalPlayersLabel = ServerTab:CreateLabel("Jogadores no Servidor: 0")
+local SectionLogs = MainTab:CreateSection("Monitoramento de Usuários")
+local TotalPlayersLabel = MainTab:CreateLabel("Jogadores no Servidor: 0")
 
 -- Loop de atualização em segundo plano (Roda a cada 1 segundo)
 task.spawn(function()
@@ -485,3 +485,127 @@ game:GetService("Players").PlayerRemoving:Connect(function(jogadorSaindo)
       Duration = 4
    })
 end)
+
+local SectionPainel = MainTab:CreateSection("Outros")
+MainTab:CreateButton({
+   Name = ";char",
+   Callback = function()
+      local Players = game:GetService("Players")
+      local LocalPlayer = Players.LocalPlayer
+      local LChar = LocalPlayer.Character
+      
+      -- 1. PEGA O TEXTO DIGITADO: Lê a variável da TextBox existente do seu painel (ex: AlvoSelecionado)
+      -- Substitua 'AlvoSelecionado' se a sua variável tiver outro nome
+      local nomeDigitado = AlvoSelecionado 
+      
+      if nomeDigitado == "" or nomeDigitado == nil then
+         Rayfield:Notify({Title = "Painel Privado", Content = "Por favor, digite o nome do alvo na TextBox.", Duration = 3})
+         return
+      end
+
+      -- 2. BUSCA INTELIGENTE: Usa a sua função de busca por nome parcial para não falhar
+      local TPlayer = buscarJogador(nomeDigitado)
+
+      if TPlayer and TPlayer.Character and LChar then
+         local LHumanoid = LChar:FindFirstChildOfClass("Humanoid")
+         local THumanoid = TPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+         if LHumanoid and THumanoid then
+            -- Notificação puramente local (Mantém o anonimato de vocês)
+            Rayfield:Notify({Title = "Painel Privado", Content = "Clonando aparência de " .. TPlayer.Name .. "...", Duration = 3})
+
+            -- 3. RESETAR SEU AVATAR ATUAL (Limpeza em lote para ser mais rápido)
+            local LDesc = LHumanoid:GetAppliedDescription()
+            
+            task.spawn(function()
+               pcall(function()
+                  for _, acc in ipairs(LDesc:GetAccessories(true)) do
+                     if acc.AssetId then Remotes.Wear:InvokeServer(tonumber(acc.AssetId)) end
+                  end
+                  if tonumber(LDesc.Shirt) then Remotes.Wear:InvokeServer(tonumber(LDesc.Shirt)) end
+                  if tonumber(LDesc.Pants) then Remotes.Wear:InvokeServer(tonumber(LDesc.Pants)) end
+                  if tonumber(LDesc.Face) then Remotes.Wear:InvokeServer(tonumber(LDesc.Face)) end
+               end)
+            end)
+            
+            task.wait(0.3)
+
+            -- 4. CAPTURA COMPLETA E ATUALIZADA DO ALVO
+            local PDesc = THumanoid:GetAppliedDescription()
+
+            -- Envia a estrutura e proporções corporais corretas (R6 / R15 / Tamanhos)
+            local argsBody = {
+               [1] = {
+                  [1] = PDesc.Torso or 0,
+                  [2] = PDesc.RightArm or 0,
+                  [3] = PDesc.LeftArm or 0,
+                  [4] = PDesc.RightLeg or 0,
+                  [5] = PDesc.LeftLeg or 0,
+                  [6] = PDesc.Head or 0
+               }
+            }
+            pcall(function() Remotes.ChangeCharacterBody:InvokeServer(unpack(argsBody)) end)
+            task.wait(0.3)
+
+            -- Aplica Roupas, Rostos e Animações de forma sequencial garantida
+            pcall(function()
+               if tonumber(PDesc.Shirt) and tonumber(PDesc.Shirt) > 0 then Remotes.Wear:InvokeServer(tonumber(PDesc.Shirt)) task.wait(0.1) end
+               if tonumber(PDesc.Pants) and tonumber(PDesc.Pants) > 0 then Remotes.Wear:InvokeServer(tonumber(PDesc.Pants)) task.wait(0.1) end
+               if tonumber(PDesc.Face) and tonumber(PDesc.Face) > 0 then Remotes.Wear:InvokeServer(tonumber(PDesc.Face)) task.wait(0.1) end
+               if tonumber(PDesc.IdleAnimation) and tonumber(PDesc.IdleAnimation) > 0 then Remotes.Wear:InvokeServer(tonumber(PDesc.IdleAnimation)) task.wait(0.1) end
+            end)
+
+            -- Garante a clonagem de acessórios físicos que o GetAppliedDescription às vezes deixa passar
+            pcall(function()
+               -- Copia os acessórios registrados na descrição nativa
+               for _, v in ipairs(PDesc:GetAccessories(true)) do
+                  if v.AssetId and tonumber(v.AssetId) then
+                     Remotes.Wear:InvokeServer(tonumber(v.AssetId))
+                     task.wait(0.1)
+                  end
+               end
+               
+               -- Correção extra: Varre o Personagem 3D procurando camisas/calças adicionais do jogo
+               if TPlayer.Character:FindFirstChildOfClass("Shirt") then
+                  local shirtId = TPlayer.Character:FindFirstChildOfClass("Shirt").ShirtTemplate:match("%d+")
+                  if shirtId then Remotes.Wear:InvokeServer(tonumber(shirtId)) end
+               end
+               if TPlayer.Character:FindFirstChildOfClass("Pants") then
+                  local pantsId = TPlayer.Character:FindFirstChildOfClass("Pants").PantsTemplate:match("%d+")
+                  if pantsId then Remotes.Wear:InvokeServer(tonumber(pantsId)) end
+               end
+            end)
+
+            -- Sincroniza a cor da pele exata
+            local SkinColor = TPlayer.Character:FindFirstChild("Body Colors")
+            if SkinColor then
+               pcall(function() Remotes.ChangeBodyColor:FireServer(tostring(SkinColor.HeadColor)) end)
+               task.wait(0.2)
+            end
+
+            -- 5. CLONAGEM AUTOMÁTICA DE IDENTIDADE (RolePlay Bag)
+            local Bag = TPlayer:FindFirstChild("PlayersBag")
+            if Bag then
+               pcall(function()
+                  if Bag:FindFirstChild("RPName") and Bag.RPName.Value ~= "" then
+                     Remotes.RPNameText:FireServer("RolePlayName", Bag.RPName.Value)
+                  end
+                  if Bag:FindFirstChild("RPBio") and Bag.RPBio.Value ~= "" then
+                     Remotes.RPNameText:FireServer("RolePlayBio", Bag.RPBio.Value)
+                  end
+                  if Bag:FindFirstChild("RPNameColor") then
+                     Remotes.RPNameColor:FireServer("PickingRPNameColor", Bag.RPNameColor.Value)
+                  end
+                  if Bag:FindFirstChild("RPBioColor") then
+                     Remotes.RPNameColor:FireServer("PickingRPBioColor", Bag.RPBioColor.Value)
+                  end
+               end)
+            end
+            
+            Rayfield:Notify({Title = "Painel Privado", Content = "Identidade copiada com sucesso!", Duration = 3})
+         end
+      else
+         Rayfield:Notify({Title = "Painel Privado", Content = "Jogador não encontrado para clonar aparência.", Duration = 3})
+      end
+   end,
+})
