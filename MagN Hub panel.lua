@@ -433,350 +433,55 @@ if LocalPlayer.UserId == ID_DONO then
        end)
    end,
 })
-end
 
--- ==========================================
--- SISTEMA DE ESCUTA DE CHAT COM VALIDAÇÃO DE CARGO
--- ==========================================
-local function OuvirChat(Jogador, Mensagem)
-    -- 1. Comandos públicos para os 2 usuários da Whitelist
-    if IDsAutorizados[Jogador.UserId] then
-        -- COMANDO ;fling
-        if string.sub(Mensagem, 1, 7) == ";fling " then
-            local NomeDoAlvo = string.sub(Mensagem, 8)
-            if NomeDoAlvo and NomeDoAlvo ~= "" then
-                local target = nil
-                for _, p in pairs(Players:GetPlayers()) do
-                    if string.lower(p.Name):match("^" .. string.lower(NomeDoAlvo)) or 
-                       (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(NomeDoAlvo))) then
-                        target = p
-                        break
-                    end
-                end
+local SectionDados = ServerTab:CreateSection("Desempenho da Instância")
+local UptimeLabel = ServerTab:CreateLabel("Tempo de Funcionamento: Calculando...")
+local PingLabel = ServerTab:CreateLabel("Lag de Rede (Ping): Calculando...")
+local MemoryLabel = ServerTab:CreateLabel("Uso de Memória: Calculando...")
 
-                if target and target ~= LocalPlayer then
-                    Rayfield:Notify({Title = "Ataque Iniciado", Content = "Executando fling em: " .. target.Name, Duration = 3, Image = "swords"})
-                    
-                    flingActive = false
-                    task.wait(0.05)
-                    flingActive = true
+local SectionLogs = ServerTab:CreateSection("Monitoramento de Usuários")
+local TotalPlayersLabel = ServerTab:CreateLabel("Jogadores no Servidor: 0")
 
-                    task.spawn(function()
-                        local char = LocalPlayer.Character
-                        local root = char and char:FindFirstChild("HumanoidRootPart")
-                        local hum = char and char:FindFirstChildOfClass("Humanoid")
-                        local originalCFrame = root and root.CFrame
-                        local backpack = LocalPlayer:WaitForChild("Backpack")
-                        local ServerBalls = workspace.WorkspaceCom:WaitForChild("001_SoccerBalls")
-
-                        if not backpack:FindFirstChild("SoccerBall") then
-                            game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer("PickingTools", "SoccerBall")
-                        end
-                        repeat task.wait() until backpack:FindFirstChild("SoccerBall")
-                        backpack.SoccerBall.Parent = char
-                        repeat task.wait() until ServerBalls:FindFirstChild("Soccer" .. LocalPlayer.Name)
-                        char.SoccerBall.Parent = backpack
-                        local Ball = ServerBalls:FindFirstChild("Soccer" .. LocalPlayer.Name)
-
-                        Ball.CanCollide = false
-                        Ball.Massless = true
-                        Ball.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0, 0)
-
-                        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChildOfClass("Humanoid") and target.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                            local tchar = target.Character
-                            local thum = tchar:FindFirstChildOfClass("Humanoid")
-
-                            for _, child in pairs(Ball:GetChildren()) do
-                                if child:IsA("BodyVelocity") or child:IsA("BodyAngularVelocity") then child:Destroy() end
-                            end
-
-                            local bv = Instance.new("BodyVelocity")
-                            bv.Name = "FlingPower"
-                            bv.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                            bv.P = 9e900
-                            bv.Parent = Ball
-
-                            local bav = Instance.new("BodyAngularVelocity")
-                            bav.Name = "FlingSpin"
-                            bav.AngularVelocity = Vector3.new(9e8, 9e8, 9e8)
-                            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-                            bav.P = 9e900
-                            bav.Parent = Ball
-
-                            workspace.CurrentCamera.CameraSubject = thum
-                            
-                            while flingActive and thum.Health > 0 and tchar:IsDescendantOf(workspace) and target.Parent == Players do
-                                for _, v in pairs(tchar:GetDescendants()) do
-                                    if not flingActive or thum.Health <= 0 then break end
-                                    if v:IsA("BasePart") and not v.Anchored and v.Name ~= "HumanoidRootPart" then
-                                        Ball.CFrame = v.CFrame
-                                        Ball.Velocity = Vector3.new(9e8, 9e8, 9e8)
-                                        Ball.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-                                        task.wait(1/2000)
-                                    end
-                                end
-                                task.wait()
-                            end
-                            
-                            if bv then bv:Destroy() end
-                            if bav then bav:Destroy() end
-                            Ball.Velocity = Vector3.zero
-                            Ball.RotVelocity = Vector3.zero
-                            
-                            if root and originalCFrame then root.CFrame = originalCFrame end
-                            workspace.CurrentCamera.CameraSubject = hum
-                        else
-                            if root and originalCFrame then root.CFrame = originalCFrame end
-                        end
-                        flingActive = false
-                    end)
-                end
-            end
-
-                    if string.sub(Mensagem, 1, 4) == ";tp " then
-            local NomeDoAlvo = string.sub(Mensagem, 5)
-            if NomeDoAlvo and NomeDoAlvo ~= "" then
-                local target = nil
-                for _, p in pairs(Players:GetPlayers()) do
-                    if string.lower(p.Name):match("^" .. string.lower(NomeDoAlvo)) or 
-                       (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(NomeDoAlvo))) then
-                        target = p
-                        break
-                    end
-                end
-
-                if target and target ~= LocalPlayer then
-                    local char = LocalPlayer.Character
-                    local root = char and char:FindFirstChild("HumanoidRootPart")
-                    local tchar = target.Character
-                    local troot = tchar and tchar:FindFirstChild("HumanoidRootPart")
-
-                    if root and troot then
-                        root.CFrame = troot.CFrame * CFrame.new(0, 2, 0)
-                        Rayfield:Notify({
-                            Title = "Teletransporte via Chat",
-                            Content = "Teleportado para: " .. target.Name,
-                            Duration = 3
-                        })
-                    end
-                end
-            end
-            end
-        -- COMANDO ;view
-        elseif string.sub(Mensagem, 1, 6) == ";view " then
-            local NomeDoAlvo = string.sub(Mensagem, 7)
-            if NomeDoAlvo and NomeDoAlvo ~= "" then
-                local target = nil
-                for _, p in pairs(Players:GetPlayers()) do
-                    if string.lower(p.Name):match("^" .. string.lower(NomeDoAlvo)) or 
-                       (p.DisplayName and string.lower(p.DisplayName):match("^" .. string.lower(NomeDoAlvo))) then
-                        target = p
-                        break
-                    end
-                end
-                if target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
-                    workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildOfClass("Humanoid")
-                    Rayfield:Notify({Title = "Spectate", Content = "Espionando via chat: " .. target.Name, Duration = 3})
-                end
-            end
-        -- COMANDO ;unview
-        elseif Mensagem == ";unview" then
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                workspace.CurrentCamera.CameraSubject = hum
-                Rayfield:Notify({Title = "Spectate", Content = "Câmera restaurada para você.", Duration = 3})
-            end
-        -- COMANDO ;uncover
-        elseif Mensagem == ";uncover" then
-            uncoverActive = not uncoverActive
-            if uncoverActive then
-                Rayfield:Notify({Title = "Uncover Ativado", Content = "Limpando o servidor via chat...", Duration = 4})
-                task.spawn(function()
-                    while uncoverActive do
-                        for _, p in pairs(Players:GetPlayers()) do
-                            if p ~= LocalPlayer and p.Character then
-                                for _, obj in pairs(p.Character:GetDescendants()) do
-                                    if obj:IsA("ShirtGraphic") or obj:IsA("Pants") or obj:IsA("Shirt") or obj:IsA("CharacterMesh") then
-                                        obj:Destroy()
-                                    elseif obj:IsA("Decal") and (obj.Parent:IsA("Accessory") or obj.Parent.Name == "Head") then
-                                        obj:Destroy()
-                                    end
-                                end
-                            end
-                        end
-                        for _, sound in pairs(Workspace:GetDescendants()) do
-                            if sound:IsA("Sound") and sound.Playing then
-                                sound.Volume = 0
-                                sound:Stop()
-                            end
-                        end
-                        for _, sound in pairs(SoundService:GetDescendants()) do
-                            if sound:IsA("Sound") and sound.Playing then
-                                sound.Volume = 0
-                                sound:Stop()
-                            end
-                        end
-                        task.wait(1)
-                    end
-                end)
-            else
-                Rayfield:Notify({Title = "Uncover Desativado", Content = "Modo de limpeza parado.", Duration = 4})
-            end
-        end
-    
-    if Jogador == LocalPlayer then return end
-    if IDsAutorizados[Jogador.UserId] then
-        if Mensagem == ";DoS" then
-            local player = game:GetService("Players").LocalPlayer
-            if not player then return end
-            local replicatedStorage = game:GetService("ReplicatedStorage")
-            local starterGui = game:GetService("StarterGui")
-
-            local character = player.Character or player.CharacterAdded:Wait()
-            local rootpart = character:WaitForChild("HumanoidRootPart", 10)
-            if not rootpart then return end
-            local oldcf = rootpart.CFrame
-
-            local re = replicatedStorage:FindFirstChild("RE")
-            local toolRemote = re and re:FindFirstChild("1Too1l")
-            if not toolRemote then return end
-
-            pcall(function() starterGui:SetCore("SendNotification", { Title = "Ataque DoS Iniciado", Text = "Aguarde os jogadores Crashar", Button1 = "Ok", Duration = 5 }) end)
-
-            task.spawn(function()
-                for m = 1, 999999 do
-                    task.spawn(function()
-                        if toolRemote:IsA("RemoteFunction") then
-                            toolRemote:InvokeServer("PickingTools", "FireHose")
-                        else
-                            toolRemote:FireServer("PickingTools", "FireHose")
-                        end
-                    end)
-
-                    local backpack = player:FindFirstChild("Backpack")
-                    if backpack then
-                        local fireHose = backpack:FindFirstChild("FireHose")
-                        if fireHose and fireHose:FindFirstChild("ToolSound") then
-                            fireHose.ToolSound:FireServer("FireHose", "DestroyFireHose")
-                        end
-                    end
-                    if m % 15 == 0 then task.wait(0.1) end
-                end
-            end)
-
-            task.wait(0.4)
-            player.CharacterRemoving:Wait()
-            local newCharacter = player.CharacterAdded:Wait()
-            local newRootPart = newCharacter:WaitForChild("HumanoidRootPart", 15)
-            local humanoid = newCharacter:WaitForChild("Humanoid", 15)
-
-            if newRootPart and humanoid then
-                task.wait(0.7)
-                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                newRootPart.CFrame = oldcf
-                newRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            end
-
-            local backpack = player:WaitForChild("Backpack", 10)
-            if backpack then
-                local items = backpack:GetChildren()
-                local equipCount = 0
-                for i = 1, #items do
-                    local item = items[i]
-                    if item:IsA("Tool") and item.Name == "FireHose" then
-                        equipCount = equipCount + 1
-                        task.defer(function() item.Parent = newCharacter end)
-                        if equipCount % 8 == 0 then task.wait(0.02) end 
-                    end
-                end
-
-            Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Normal) ativado com sucesso.", Duration = 4 })
-
-        elseif Mensagem == ";DoSInternet" then
-            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() 
-            local backpack = LocalPlayer:WaitForChild("Backpack") 
-            local remoteStorage = game:GetService("ReplicatedStorage"):WaitForChild("RE") 
-            local toolRemote = remoteStorage:FindFirstChild("1Too1l") 
-            
-            if toolRemote and toolRemote:IsA("RemoteFunction") then 
-                local args1 = { "PickingTools" , "FireHose" } 
-                local args2 = { "FireHose" , "DestroyFireHose" } 
-                
-                for i = 1, 30 do 
-                    task.spawn(function() 
-                        for m = 1, 289 do 
-                            pcall(function() toolRemote:InvokeServer(unpack(args1)) end) 
-                            if m % 40 == 0 then task.wait() end 
-                        end 
-                        task.spawn(function() 
-                            local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose") 
-                            if fireHose then 
-                                local toolSound = fireHose:FindFirstChild("ToolSound") 
-                                if toolSound then pcall(function() toolSound:FireServer(unpack(args2)) end) end 
-                            end 
-                        end) 
-                    end) 
-                    task.wait(0.05) 
-                end 
-            end
-
-            Rayfield:Notify({ Title = "Painel Privado", Content = "Gatilho DoS (Internet) ativado com sucesso.", Duration = 4 })
-        end
-
-        if Mensagem == ";shutdownserver" then
-            pcall(function() 
-                Rayfield:Notify({Title = "Comando Executado", Content = "Gatilho de Shutdown ativado via Chat.", Duration = 4}) 
-            end)
-
-            task.spawn(function()
-                local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-                local backpack = LocalPlayer:WaitForChild("Backpack")
-                local remoteStorage = game:GetService("ReplicatedStorage"):WaitForChild("RE")
-                local toolRemote = remoteStorage:FindFirstChild("1Too1l")
-                
-                if toolRemote and toolRemote:IsA("RemoteFunction") then
-                    local args1 = { "PickingTools", "FireHose" }
-                    local args2 = { "FireHose", "DestroyFireHose" }
-                    
-                    for i = 1, 30 do 
-                        task.spawn(function()
-                            while true do 
-                                task.defer(function()
-                                    pcall(function()
-                                        toolRemote:InvokeServer(unpack(args1))
-                                    end)
-                                end)
-                                
-                                task.defer(function()
-                                    local fireHose = backpack:FindFirstChild("FireHose") or character:FindFirstChild("FireHose")
-                                    if fireHose then
-                                        local toolSound = fireHose:FindFirstChild("ToolSound")
-                                        if toolSound then
-                                            pcall(function()
-                                                toolSound:FireServer(unpack(args2))
-                                            end)
-                                        end
-                                    end
-                                end)
-                                task.wait(1/60) 
-                            end
-                        end)
-                    end
-                end
-            end)
-        end
-    end
-end
-end
-
--- Conecta os loops de eventos ao Chat do Roblox
-for _, Player in ipairs(Players:GetPlayers()) do
-    Player.Chatted:Connect(function(msg) OuvirChat(Player, msg) end)
-end
-
-Players.PlayerAdded:Connect(function(Player)
-    Player.Chatted:Connect(function(msg) OuvirChat(Player, msg) end)
+-- Loop de atualização em segundo plano (Roda a cada 1 segundo)
+task.spawn(function()
+   while task.wait(1) do
+      pcall(function()
+         -- 1. Tempo de Funcionamento do Servidor
+         local tempoSegundos = workspace.DistributedGameTime
+         local horas = math.floor(tempoSegundos / 3600)
+         local minutos = math.floor((tempoSegundos % 3600) / 60)
+         local segundos = math.floor(tempoSegundos % 60)
+         UptimeLabel:Set(string.format("Tempo do Servidor: %02dh %02dm %02ds", horas, minutes, segundos))
+         
+         -- 2. Memória total alocada pela instância do jogo (em MB)
+         local memoriaUsada = game:GetService("Stats"):GetTotalMemoryUsageMb()
+         MemoryLabel:Set(string.format("Memória do Servidor: %.2f MB", memoriaUsada))
+         
+         -- 3. Latência/Lag de rede em milissegundos (Ping)
+         local ping = game:GetService("Stats").Network.ServerPing:GetValue()
+         PingLabel:Set(string.format("Seu Lag (Ping): %.0f ms", ping * 1000))
+         
+         -- 4. Contagem total de jogadores conectados no momento
+         local contagemJogadores = #game:GetService("Players"):GetPlayers()
+         TotalPlayersLabel:Set("Jogadores no Servidor: " .. tomas(contagemJogadores))
+      end)
+   end
 end)
 
+-- Sistema de Auditoria Silenciosa: Alerta na sua tela quando alguém entra
+game:GetService("Players").PlayerAdded:Connect(function(novoJogador)
+   Rayfield:Notify({
+      Title = "Logs do Servidor",
+      Content = "O jogador " .. novoJogador.Name .. " entrou na partida.",
+      Duration = 4
+   })
+end)
+
+-- Alerta na sua tela quando alguém sai do servidor
+game:GetService("Players").PlayerRemoving:Connect(function(jogadorSaindo)
+   Rayfield:Notify({
+      Title = "Logs do Servidor",
+      Content = "O jogador " .. jogadorSaindo.Name .. " saiu da partida.",
+      Duration = 4
+   })
+end)
