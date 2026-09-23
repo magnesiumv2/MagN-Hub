@@ -33,6 +33,7 @@ local Window = Rayfield:CreateWindow({
    Name = "MagN Hub Panel",
    LoadingTitle = "Autenticando Usuário...",
    LoadingSubtitle = "Uso Restrito",
+   Theme = "AmberGlow",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false
 })
