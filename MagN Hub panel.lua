@@ -152,6 +152,137 @@ MainTab:CreateButton({
    end,
 })
 
+-- Botão de Punição Física com Teletransporte para o Limbo (MainTab)
+MainTab:CreateButton({
+   Name = ";punish",
+   Callback = function()
+      local Players = game:GetService("Players")
+      local ReplicatedStorage = game:GetService("ReplicatedStorage")
+      local LocalPlayer = Players.LocalPlayer
+      local LChar = LocalPlayer.Character
+      
+      -- 1. Pega o nome digitado na TextBox existente do seu painel
+      local nomeDigitado = AlvoSelecionado 
+
+      if nomeDigitado == "" or nomeDigitado == nil then
+         Rayfield:Notify({Title = "Painel Privado", Content = "Por favor, digite o nome do alvo na TextBox.", Duration = 3})
+         return
+      end
+
+      -- Busca inteligente usando a função de nome parcial do seu script
+      local targetPlayer = buscarJogador(nomeDigitado)
+
+      if not targetPlayer then
+         Rayfield:Notify({Title = "Painel Privado", Content = "Erro: Jogador não encontrado.", Duration = 3})
+         return
+      end
+
+      if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+         Rayfield:Notify({Title = "Painel Privado", Content = "Erro: Alvo sem personagem carregado.", Duration = 3})
+         return
+      end
+
+      Rayfield:Notify({Title = "Painel Privado", Content = "Iniciando captura de " .. targetPlayer.Name, Duration = 3})
+
+      -- 2. Limpeza e Invocação do Couch via Remotes
+      pcall(function()
+         ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
+         ReplicatedStorage.RE:FindFirstChild("1Too1l"):InvokeServer("PickingTools", "Couch")
+      end)
+
+      local couch = LocalPlayer.Backpack:WaitForChild("Couch", 3)
+      if not couch then
+         Rayfield:Notify({Title = "Painel Privado", Content = "Erro: Sofá não obtido.", Duration = 3})
+         return
+      end
+
+      -- 3. Configuração Física e Segurança dos Assentos
+      couch.Name = "Chaos.Couch"
+      local seat1 = couch:FindFirstChild("Seat1")
+      local seat2 = couch:FindFirstChild("Seat2")
+      local handle = couch:FindFirstChild("Handle")
+
+      if seat1 and seat2 and handle then
+         seat1.Disabled = true
+         seat2.Disabled = true
+         handle.Name = "Handle "
+      else
+         Rayfield:Notify({Title = "Painel Privado", Content = "Erro: Componentes do Couch ausentes.", Duration = 3})
+         return
+      end
+      couch.Parent = LChar
+
+      -- Instancia o controle de velocidade inicial
+      local tet = Instance.new("BodyVelocity", seat1)
+      tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+      tet.P = 1250
+      tet.Velocity = Vector3.new(0, 0, 0)
+      tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+
+      -- 4. Loop de captura física ajustado nas pernas (-2.5 studs)
+      repeat
+         for m = 1, 35 do
+            local tRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not tRoot then break end
+            
+            local pos = { x = 0, y = 0, z = 0 }
+            pos.x = tRoot.Position.X + (tRoot.Velocity.X / 2)
+            pos.y = tRoot.Position.Y + (tRoot.Velocity.Y / 2)
+            pos.z = tRoot.Position.Z + (tRoot.Velocity.Z / 2)
+            
+            -- Puxa o Couch rente ao chão (pernas/pés)
+            seat1.CFrame = CFrame.new(Vector3.new(pos.x, pos.y, pos.z)) * CFrame.new(-2, -2.5, 0)
+            task.wait()
+         end
+         
+         -- Atualização rápida da mochila para forçar o encaixe físico
+         tet:Destroy()
+         couch.Parent = LocalPlayer.Backpack
+         task.wait()
+         if couch:FindFirstChild("Handle ") then couch["Handle "].Name = "Handle" end
+         task.wait(0.2)
+         couch.Parent = LChar
+         task.wait()
+         couch.Parent = LocalPlayer.Backpack
+         if couch:FindFirstChild("Handle") then couch.Handle.Name = "Handle " end
+         task.wait(0.2)
+         couch.Parent = LChar
+         
+         tet = Instance.new("BodyVelocity", seat1)
+         tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+         tet.P = 1250
+         tet.Velocity = Vector3.new(0, 0, 0)
+         tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+         
+      until not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("Humanoid") or targetPlayer.Character.Humanoid.Sit == true
+      
+      -- 5. O ALVO SENTOU: Executa o Teletransporte Imediato para o Limbo Oculto
+      task.wait()
+      tet:Destroy()
+      
+      if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+         -- Força o CFrame do assento principal (e o alvo preso nele) para a coordenada exata descrita
+         seat1.CFrame = CFrame.new(1, -501, -1)
+         Rayfield:Notify({Title = "Painel Privado", Content = targetPlayer.Name .. " enviado com sucesso ao isolamento.", Duration = 4})
+      end
+      
+      -- 6. Encerramento Seguro e Destruição de Evidências
+      task.wait(0.5)
+      couch.Parent = LocalPlayer.Backpack
+      task.wait()
+      if couch:FindFirstChild("Handle ") then couch["Handle "].Name = "Handle" end
+      task.wait(0.3)
+      couch.Parent = LChar
+      task.wait(0.3)
+      couch.Grip = CFrame.new(Vector3.new(0, 0, 0))
+      task.wait(0.3)
+      
+      pcall(function()
+         ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
+      end)
+   end,
+})
+
 MainTab:CreateButton({
    Name = ";view",
    Callback = function()
