@@ -153,6 +153,115 @@ MainTab:CreateButton({
 })
 
 MainTab:CreateButton({
+   Name = ";punish",
+   Callback = function()
+       -- 1. VERIFICAÇÃO DO ALVO USANDO A SUA VARIÁVEL GLOBAL
+       if not getgenv().Target or getgenv().Target == "" then return end
+
+       local Players = game:GetService("Players")
+       local ReplicatedStorage = game:GetService("ReplicatedStorage")
+       local LocalPlayer = Players.LocalPlayer
+       
+       local targetPlayer = Players:FindFirstChild(getgenv().Target)
+       if not targetPlayer then return end
+       if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+
+       -- 2. DISPARO DOS REMOTES NATIVOS DO BROOKHAVEN
+       local args = { [1] = "ClearAllTools" }
+       ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer(unpack(args))
+       local args = { [1] = "PickingTools", [2] = "Couch" }
+       ReplicatedStorage.RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
+
+       -- 3. VERIFICAÇÃO E CONFIGURAÇÃO DO COUCH
+       local couch = LocalPlayer.Backpack:WaitForChild("Couch", 2)
+       if not couch then return end
+
+       couch.Name = "Chaos.Couch"
+       local seat1 = couch:FindFirstChild("Seat1")
+       local seat2 = couch:FindFirstChild("Seat2")
+       local handle = couch:FindFirstChild("Handle")
+       
+       if seat1 and seat2 and handle then
+           seat1.Disabled = true
+           seat2.Disabled = true
+           handle.Name = "Handle "
+       else
+           return
+       end
+       couch.Parent = LocalPlayer.Character
+
+       -- Notificação única de Sucesso: Avisa na tela de vocês que o ataque começou
+       local Rayfield = loadstring(game:HttpGet('https://sirius.menu'))()
+       Rayfield:Notify({
+           Title = ";punish Ativado",
+           Content = "Iniciando perseguição ao alvo: " .. targetPlayer.DisplayName,
+           Duration = 3,
+           Image = "skull"
+       })
+
+       -- 4. CRIAÇÃO DA FORÇA DE VELOCIDADE
+       local tet = Instance.new("BodyVelocity", seat1)
+       tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+       tet.P = 1250
+       tet.Velocity = Vector3.new(0, 0, 0)
+       tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+
+       -- 5. LOOP METRALHADORA DE REPETIÇÃO (MIRANDO NAS PERNAS - Y: -2.8)
+       repeat
+           for m = 1, 35 do
+               local pos = { x = 0, y = 0, z = 0 }
+               local tRoot = targetPlayer.Character and targetPlayer.Character.HumanoidRootPart
+               if not tRoot then break end
+               
+               pos.x = tRoot.Position.X + (tRoot.Velocity.X / 2)
+               pos.y = tRoot.Position.Y + (tRoot.Velocity.Y / 2)
+               pos.z = tRoot.Position.Z + (tRoot.Velocity.Z / 2)
+               
+               seat1.CFrame = CFrame.new(Vector3.new(pos.x, pos.y, pos.z)) * CFrame.new(0, -2.8, 0)
+               task.wait()
+           end
+           tet:Destroy()
+           couch.Parent = LocalPlayer.Backpack
+           task.wait()
+           couch:FindFirstChild("Handle ").Name = "Handle"
+           task.wait(0.2)
+           couch.Parent = LocalPlayer.Character
+           task.wait()
+           couch.Parent = LocalPlayer.Backpack
+           couch.Handle.Name = "Handle "
+           task.wait(0.2)
+           couch.Parent = LocalPlayer.Character
+           
+           tet = Instance.new("BodyVelocity", seat1)
+           tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+           tet.P = 1250
+           tet.Velocity = Vector3.new(0, 0, 0)
+           tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+       until targetPlayer.Character and targetPlayer.Character.Humanoid and targetPlayer.Character.Humanoid.Sit == true
+
+       -- 6. EXECUÇÃO DO BOTE FATAL (LIMBO SUBTERRÂNEO NA KILL ZONE)
+       task.wait()
+       couch.Parent = LocalPlayer.Backpack
+
+       if handle then
+           handle.CFrame = CFrame.new(1, -501, -1)
+           seat1.CFrame = CFrame.new(1, -501, -1)
+           seat2.CFrame = CFrame.new(1, -501, -1)
+       end
+
+       couch.Parent = LocalPlayer.Character
+       task.wait(0.2)
+       couch.Parent = LocalPlayer.Backpack
+       task.wait(1.5)
+
+       -- 7. LIMPEZA TOTAL DE EVIDÊNCIAS
+       local bv = seat1:FindFirstChild("#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W")
+       if bv then bv:Destroy() end
+       ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
+   end,
+})
+
+MainTab:CreateButton({
    Name = ";view",
    Callback = function()
        if AlvoSelecionado ~= "" then
