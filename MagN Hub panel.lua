@@ -565,58 +565,6 @@ if IdsAutorizados[User.Id] then
    end,
 })
 
-local SectionDados = MainTab:CreateSection("Desempenho da Instância")
-local UptimeLabel = MainTab:CreateLabel("Tempo de Funcionamento: Calculando...")
-local PingLabel = MainTab:CreateLabel("Lag de Rede (Ping): Calculando...")
-local MemoryLabel = MainTab:CreateLabel("Uso de Memória: Calculando...")
-
-local SectionLogs = MainTab:CreateSection("Monitoramento de Usuários")
-local TotalPlayersLabel = MainTab:CreateLabel("Jogadores no Servidor: 0")
-
--- Loop de atualização em segundo plano (Roda a cada 1 segundo)
-task.spawn(function()
-   while task.wait(1) do
-      pcall(function()
-         -- 1. Tempo de Funcionamento do Servidor
-         local tempoSegundos = workspace.DistributedGameTime
-         local horas = math.floor(tempoSegundos / 3600)
-         local minutos = math.floor((tempoSegundos % 3600) / 60)
-         local segundos = math.floor(tempoSegundos % 60)
-         UptimeLabel:Set(string.format("Tempo do Servidor: %02dh %02dm %02ds", horas, minutes, segundos))
-         
-         -- 2. Memória total alocada pela instância do jogo (em MB)
-         local memoriaUsada = game:GetService("Stats"):GetTotalMemoryUsageMb()
-         MemoryLabel:Set(string.format("Memória do Servidor: %.2f MB", memoriaUsada))
-         
-         -- 3. Latência/Lag de rede em milissegundos (Ping)
-         local ping = game:GetService("Stats").Network.ServerPing:GetValue()
-         PingLabel:Set(string.format("Seu Lag (Ping): %.0f ms", ping * 1000))
-         
-         -- 4. Contagem total de jogadores conectados no momento
-         local contagemJogadores = #game:GetService("Players"):GetPlayers()
-         TotalPlayersLabel:Set("Jogadores no Servidor: " .. tomas(contagemJogadores))
-      end)
-   end
-end)
-
--- Sistema de Auditoria Silenciosa: Alerta na sua tela quando alguém entra
-game:GetService("Players").PlayerAdded:Connect(function(novoJogador)
-   Rayfield:Notify({
-      Title = "Logs do Servidor",
-      Content = "O jogador " .. novoJogador.Name .. " entrou na partida.",
-      Duration = 4
-   })
-end)
-
--- Alerta na sua tela quando alguém sai do servidor
-game:GetService("Players").PlayerRemoving:Connect(function(jogadorSaindo)
-   Rayfield:Notify({
-      Title = "Logs do Servidor",
-      Content = "O jogador " .. jogadorSaindo.Name .. " saiu da partida.",
-      Duration = 4
-   })
-end)
-
 local SectionPainel = MainTab:CreateSection("Outros")
 MainTab:CreateButton({
    Name = ";char",
