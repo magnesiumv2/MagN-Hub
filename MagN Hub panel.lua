@@ -768,6 +768,7 @@ local function OuvirChat(Jogador, Mensagem)
         end
     end
 end
+end
 
 -- Conecta os loops de eventos ao Chat do Roblox
 for _, Player in ipairs(Players:GetPlayers()) do
