@@ -398,6 +398,7 @@ MainTab:CreateButton({
                end
            end
        end)
-   end,
+   end)
+end
 })
 end
