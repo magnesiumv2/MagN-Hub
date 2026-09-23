@@ -30,7 +30,7 @@ end
 
 -- Janela Principal do Hub
 local Window = Rayfield:CreateWindow({
-   Name = "MagN Hub Panel",
+   Name = "restricted anonymous private panel",
    LoadingTitle = "Autenticando Usuário...",
    LoadingSubtitle = "Uso Restrito",
    Theme = "DarkBlue",
