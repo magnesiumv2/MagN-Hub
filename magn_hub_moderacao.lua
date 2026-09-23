@@ -230,6 +230,97 @@ MainTab:CreateButton({
    end,
 })
 
+MainTab:CreateButton({
+    Name = ";punish",
+    Callback = function()
+            local targetPlayer = Players:FindFirstChild(getgenv().Target)
+if not targetPlayer then
+    warn("Erro: Nenhum jogador alvo selecionado")
+    return
+end
+if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+    warn("Erro: Jogador alvo sem personagem ou HumanoidRootPart")
+    return
+end
+
+local args = { [1] = "ClearAllTools" }
+ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer(unpack(args))
+local args = { [1] = "PickingTools", [2] = "Couch" }
+ReplicatedStorage.RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
+
+local couch = LocalPlayer.Backpack:WaitForChild("Couch", 2)
+if not couch then
+    warn("Erro: Sofá não encontrado no Backpack")
+    return
+end
+
+couch.Name = "Chaos.Couch"
+local seat1 = couch:FindFirstChild("Seat1")
+local seat2 = couch:FindFirstChild("Seat2")
+local handle = couch:FindFirstChild("Handle")
+if seat1 and seat2 and handle then
+    seat1.Disabled = true
+    seat2.Disabled = true
+    handle.Name = "Handle "
+else
+    warn("Erro: Componentes do sofá não encontrados")
+    return
+end
+couch.Parent = LocalPlayer.Character
+
+local tet = Instance.new("BodyVelocity", seat1)
+-- Substituição do BodyVelocity obsoleto para forças físicas modernas compatíveis com o Roblox atual
+tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+tet.P = 1250
+tet.Velocity = Vector3.new(0, 0, 0)
+tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+
+repeat
+    for m = 1, 35 do
+        local pos = { x = 0, y = 0, z = 0 }
+        local tRoot = targetPlayer.Character and targetPlayer.Character.HumanoidRootPart
+        if not tRoot then break end
+        pos.x = tRoot.Position.X + (tRoot.Velocity.X / 2)
+        pos.y = tRoot.Position.Y + (tRoot.Velocity.Y / 2)
+        pos.z = tRoot.Position.Z + (tRoot.Velocity.Z / 2)
+        seat1.CFrame = CFrame.new(Vector3.new(pos.x, pos.y, pos.z)) * CFrame.new(-2, 2, 0)
+        task.wait()
+    end
+    tet:Destroy()
+    couch.Parent = LocalPlayer.Backpack
+    task.wait()
+    couch:FindFirstChild("Handle ").Name = "Handle"
+    task.wait(0.2)
+    couch.Parent = LocalPlayer.Character
+    task.wait()
+    couch.Parent = LocalPlayer.Backpack
+    couch.Handle.Name = "Handle "
+    task.wait(0.2)
+    couch.Parent = LocalPlayer.Character
+    tet = Instance.new("BodyVelocity", seat1)
+    tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    tet.P = 1250
+    tet.Velocity = Vector3.new(0, 0, 0)
+    tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+until targetPlayer.Character and targetPlayer.Character.Humanoid and targetPlayer.Character.Humanoid.Sit == true
+
+-- ADAPTAÇÃO: Teleporte para a nova coordenada requisitada (1, 501, -1) após o alvo sentar
+task.wait()
+couch.Parent = LocalPlayer.Backpack
+-- Altera o posicionamento global dos assentos para enviar o jogador preso de forma instantânea
+seat1.CFrame = CFrame.new(Vector3.new(1, 501, -1))
+seat2.CFrame = CFrame.new(Vector3.new(1, 501, -1))
+couch.Parent = LocalPlayer.Character
+task.wait(0.1)
+couch.Parent = LocalPlayer.Backpack
+task.wait(2)
+
+local bv = seat1:FindFirstChild("#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W")
+if bv then bv:Destroy() end
+ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
+    end,
+})
+
 -- ==========================================
 -- ABA 2: PAINEL ULTRA PRIVADO (Apenas se o ID for o do Dono)
 -- ==========================================
@@ -399,6 +490,6 @@ MainTab:CreateButton({
            end
        end)
    end)
-end
+end,
 })
 end
