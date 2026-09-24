@@ -191,7 +191,6 @@ MainTab:CreateButton({
        couch.Parent = LocalPlayer.Character
 
        -- Notificação única de Sucesso: Avisa na tela de vocês que o ataque começou
-       local Rayfield = loadstring(game:HttpGet('https://sirius.menu'))()
        Rayfield:Notify({
            Title = ";punish Ativado",
            Content = "Iniciando perseguição ao alvo: " .. targetPlayer.DisplayName,
