@@ -161,7 +161,14 @@ MainTab:CreateButton({
            local Players = game:GetService("Players")
            local ReplicatedStorage = game:GetService("ReplicatedStorage")
            
-           local targetPlayer = Players:FindFirstChild(AlvoSelecionado)
+           -- Tenta encontrar o jogador por nome exato ou nome parcial
+           local targetPlayer = nil
+           for _, player in pairs(Players:GetPlayers()) do
+               if string.find(string.lower(player.Name), string.lower(AlvoSelecionado)) or string.find(string.lower(player.DisplayName), string.lower(AlvoSelecionado)) then
+                   targetPlayer = player
+                   break
+               end
+           end
            
            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
                local targetHRP = targetPlayer.Character.HumanoidRootPart
@@ -170,7 +177,6 @@ MainTab:CreateButton({
                local propRemote = ReplicatedStorage:FindFirstChild("PlaceProp") or ReplicatedStorage:FindFirstChild("BuildingRemote")
                
                if propRemote then
-                   -- Nome do prop que você escolheu para a sua estratégia de segurança
                    local nomeDoProp = "TrafficBarrier" -- Substitua pelo nome do seu prop luminoso
                    
                    task.spawn(function()
@@ -181,7 +187,7 @@ MainTab:CreateButton({
                        
                        Rayfield:Notify({
                            Title = "🛡️ Executado", 
-                           Content = "Props gerados sequencialmente ao lado de " .. AlvoSelecionado, 
+                           Content = "Props gerados sequencialmente ao lado de " .. targetPlayer.Name, 
                            Duration = 3
                        })
                    end)
