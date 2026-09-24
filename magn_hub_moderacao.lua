@@ -152,133 +152,48 @@ MainTab:CreateButton({
    end,
 })
 
-MainTab:CreateButton({
-   Name = ";punish",
+-- 4. O Botão que executa a função usando a variável atualizada
+ModTab:CreateButton({
+   Name = ";kick",
    Callback = function()
-       -- 1. VERIFICAÇÃO UTILIZANDO O INPUT JÁ EXISTENTE DO SEU PAINEL
-       if not AlvoSelecionado or AlvoSelecionado == "" then 
-           Rayfield:Notify({Title = "Erro", Content = "Por favor, digite o nome de um alvo no campo de texto.", Duration = 3})
-           return 
-       end
-
-       local Players = game:GetService("Players")
-       local ReplicatedStorage = game:GetService("ReplicatedStorage")
-       local LocalPlayer = Players.LocalPlayer
-       
-       -- Busca o jogador pelo texto do Input (Verifica nome exato primeiro)
-       local targetPlayer = Players:FindFirstChild(AlvoSelecionado)
-       
-       -- Se não achar por nome exato, faz uma busca por nome parcial
-       if not targetPlayer then
-           for _, v in pairs(Players:GetPlayers()) do
-               if string.sub(string.lower(v.Name), 1, string.len(AlvoSelecionado)) == string.lower(AlvoSelecionado) or string.sub(string.lower(v.DisplayName), 1, string.len(AlvoSelecionado)) == string.lower(AlvoSelecionado) then
-                   targetPlayer = v
-                   break
-               end
-           end
-       end
-
-       if not targetPlayer or not targetPlayer.Character then 
-           Rayfield:Notify({Title = "Erro", Content = "Jogador '" .. AlvoSelecionado .. "' não encontrado.", Duration = 3})
-           return 
-       end
-       
-       local tRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-       local tHumanoid = targetPlayer.Character:FindFirstChild("Humanoid")
-       if not tRoot or not tHumanoid then return end
-
-       -- 2. DISPARO DOS REMOTES NATIVOS DO BROOKHAVEN
-       ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
-       task.wait(0.1)
-       
-       ReplicatedStorage.RE:FindFirstChild("1Too1l"):InvokeServer("PickingTools", "Couch")
-
-       -- 3. VERIFICAÇÃO E CONFIGURAÇÃO DO COUCH
-       local couch = LocalPlayer.Backpack:WaitForChild("Couch", 5)
-       if not couch then 
-           Rayfield:Notify({Title = "Erro", Content = "Não foi possível obter o sofá do servidor.", Duration = 3})
-           return 
-       end
-
-       couch.Name = "punish"
-       local seat1 = couch:FindFirstChild("Seat1")
-       local seat2 = couch:FindFirstChild("Seat2")
-       local handle = couch:FindFirstChild("Handle")
-       
-       if seat1 and seat2 and handle then
-           seat1.Disabled = false -- DEVE ESTAR FALSE PARA O ALVO PODER SENTAR!
-           seat2.Disabled = true
-           handle.Name = "Handle "
-       else
-           return
-       end
-       
-       couch.Parent = LocalPlayer.Character
-
-       -- Notificação de Sucesso
-       Rayfield:Notify({
-           Title = ";punish Ativado",
-           Content = "Sequestrando: " .. targetPlayer.DisplayName,
-           Duration = 3,
-           Image = "skull"
-       })
-
-       -- 4. CRIAÇÃO DA FORÇA DE VELOCIDADE
-       local tet = Instance.new("BodyVelocity")
-       tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-       tet.P = 3000
-       tet.Velocity = Vector3.new(0, 0, 0)
-       tet.Name = "SofasVelocity"
-       tet.Parent = seat1
-
-       -- 5. LOOP DE PERSEGUIÇÃO ATÉ O ALVO SENTAR (MÁXIMO 8 SEGUNDOS)
-       local tempoInicio = os.time()
-       local pegouAlvo = false
-
-       local success, err = pcall(function()
-           repeat
-               if not targetPlayer or not targetPlayer.Character or not tRoot then break end
-               
-               -- Previsão de movimento básica para colar perfeitamente no alvo
-               local posX = tRoot.Position.X + (tRoot.Velocity.X * 0.1)
-               -- Spawna o assento ligeiramente abaixo do quadril do alvo para forçar o Seat do Roblox
-               local posY = tRoot.Position.Y - 1.5
-               local posZ = tRoot.Position.Z + (tRoot.Velocity.Z * 0.1)
-               
-               seat1.CFrame = CFrame.new(posX, posY, posZ)
-               
-               -- Checa se o alvo sentou
-               if tHumanoid.SeatPart == seat1 or tHumanoid.Sit == true then
-                   pegouAlvo = true
-                   break
-               end
-               
-               task.wait(0.02)
-           until (os.time() - tempoInicio) > 8 or not targetPlayer.Character
-       end)
-
-       if tet then tet:Destroy() end
-
-       -- 6. EXECUÇÃO DO BOTE FATAL (LIMBO NAS COORDENADAS 1, -501, -1)
-       if pegouAlvo or tHumanoid.Sit == true then
-           -- IMPORTANTE: Tira do Character e joga no Workspace para quebrar a solda da mão do seu boneco
-           couch.Parent = workspace 
-           task.wait(0.05)
-
-           -- Define as coordenadas exatas pedidas (1, -501, -1)
-           local localizacaoMorte = CFrame.new(1, -501, -1)
-           if handle then handle.CFrame = localizacaoMorte end
-           if seat1 then seat1.CFrame = localizacaoMorte end
-           if seat2 then seat2.CFrame = localizacaoMorte end
+       -- Verifica se um alvo foi digitado antes de rodar o código
+       if AlvoSelecionado ~= "" then
+           local Players = game:GetService("Players")
+           local ReplicatedStorage = game:GetService("ReplicatedStorage")
            
-           Rayfield:Notify({Title = "Sucesso", Content = "Alvo enviado para o limbo com sucesso!", Duration = 3})
-           task.wait(1.5) -- Tempo pro script do jogo entender que ele morreu/despawnou lá embaixo
+           local targetPlayer = Players:FindFirstChild(AlvoSelecionado)
+           
+           if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+               local targetHRP = targetPlayer.Character.HumanoidRootPart
+               local spawnCFrame = targetHRP.CFrame * CFrame.new(3, 0, 0)
+               
+               local propRemote = ReplicatedStorage:FindFirstChild("PlaceProp") or ReplicatedStorage:FindFirstChild("BuildingRemote")
+               
+               if propRemote then
+                   -- Nome do prop que você escolheu para a sua estratégia de segurança
+                   local nomeDoProp = "TrafficBarrier" -- Substitua pelo nome do seu prop luminoso
+                   
+                   task.spawn(function()
+                       for i = 1, 15 do
+                           propRemote:FireServer(nomeDoProp, spawnCFrame)
+                           task.wait(0.01)
+                       end
+                       
+                       Rayfield:Notify({
+                           Title = "🛡️ Executado", 
+                           Content = "Props gerados sequencialmente ao lado de " .. AlvoSelecionado, 
+                           Duration = 3
+                       })
+                   end)
+               else
+                   Rayfield:Notify({Title = "Erro", Content = "Remote de Props não encontrado.", Duration = 3})
+               end
+           else
+               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado no mapa.", Duration = 3})
+           end
        else
-           Rayfield:Notify({Title = "Falha", Content = "O alvo se moveu demais e não sentou no sofá.", Duration = 3})
+           Rayfield:Notify({Title = "Aviso", Content = "Por favor, digite o nome de um alvo primeiro!", Duration = 3})
        end
-
-       -- 7. LIMPEZA TOTAL DE EVIDÊNCIAS
-       ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
    end,
 })
 
