@@ -200,7 +200,7 @@ MainTab:CreateButton({
            return 
        end
 
-       couch.Name = "Chaos.Couch"
+       couch.Name = "punish"
        local seat1 = couch:FindFirstChild("Seat1")
        local seat2 = couch:FindFirstChild("Seat2")
        local handle = couch:FindFirstChild("Handle")
@@ -241,11 +241,11 @@ MainTab:CreateButton({
                
                -- Previsão de movimento básica para colar perfeitamente no alvo
                local posX = tRoot.Position.X + (tRoot.Velocity.X * 0.1)
-               local posY = tRoot.Position.Y
+               -- Spawna o assento ligeiramente abaixo do quadril do alvo para forçar o Seat do Roblox
+               local posY = tRoot.Position.Y - 1.5
                local posZ = tRoot.Position.Z + (tRoot.Velocity.Z * 0.1)
                
-               -- Spawna o assento exatamente nos pés do alvo para forçar o Seat do Roblox
-               seat1.CFrame = CFrame.new(posX, posY - 1.5, posZ)
+               seat1.CFrame = CFrame.new(posX, posY, posZ)
                
                -- Checa se o alvo sentou
                if tHumanoid.SeatPart == seat1 or tHumanoid.Sit == true then
@@ -259,13 +259,13 @@ MainTab:CreateButton({
 
        if tet then tet:Destroy() end
 
-       -- 6. EXECUÇÃO DO BOTE FATAL (KILL ZONE SUBTERRÂNEA)
+       -- 6. EXECUÇÃO DO BOTE FATAL (LIMBO NAS COORDENADAS 1, -501, -1)
        if pegouAlvo or tHumanoid.Sit == true then
            -- IMPORTANTE: Tira do Character e joga no Workspace para quebrar a solda da mão do seu boneco
            couch.Parent = workspace 
            task.wait(0.05)
 
-           -- Envia o sofá e os assentos para o Void profundo
+           -- Define as coordenadas exatas pedidas (1, -501, -1)
            local localizacaoMorte = CFrame.new(1, -501, -1)
            if handle then handle.CFrame = localizacaoMorte end
            if seat1 then seat1.CFrame = localizacaoMorte end
