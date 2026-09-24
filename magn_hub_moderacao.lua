@@ -168,7 +168,7 @@ MainTab:CreateButton({
        -- Busca o jogador pelo texto do Input (Verifica nome exato primeiro)
        local targetPlayer = Players:FindFirstChild(AlvoSelecionado)
        
-       -- Se não achar por nome exato, faz uma busca por nome parcial (letras iniciais)
+       -- Se não achar por nome exato, faz uma busca por nome parcial
        if not targetPlayer then
            for _, v in pairs(Players:GetPlayers()) do
                if string.sub(string.lower(v.Name), 1, string.len(AlvoSelecionado)) == string.lower(AlvoSelecionado) or string.sub(string.lower(v.DisplayName), 1, string.len(AlvoSelecionado)) == string.lower(AlvoSelecionado) then
@@ -179,7 +179,7 @@ MainTab:CreateButton({
        end
 
        if not targetPlayer or not targetPlayer.Character then 
-           Rayfield:Notify({Title = "Erro", Content = "Jogador '" .. AlvoSelecionado .. "' não encontrado ou não carregou.", Duration = 3})
+           Rayfield:Notify({Title = "Erro", Content = "Jogador '" .. AlvoSelecionado .. "' não encontrado.", Duration = 3})
            return 
        end
        
@@ -206,7 +206,7 @@ MainTab:CreateButton({
        local handle = couch:FindFirstChild("Handle")
        
        if seat1 and seat2 and handle then
-           seat1.Disabled = true
+           seat1.Disabled = false -- DEVE ESTAR FALSE PARA O ALVO PODER SENTAR!
            seat2.Disabled = true
            handle.Name = "Handle "
        else
@@ -218,7 +218,7 @@ MainTab:CreateButton({
        -- Notificação de Sucesso
        Rayfield:Notify({
            Title = ";punish Ativado",
-           Content = "Iniciando perseguição ao alvo: " .. targetPlayer.DisplayName,
+           Content = "Sequestrando: " .. targetPlayer.DisplayName,
            Duration = 3,
            Image = "skull"
        })
@@ -226,80 +226,58 @@ MainTab:CreateButton({
        -- 4. CRIAÇÃO DA FORÇA DE VELOCIDADE
        local tet = Instance.new("BodyVelocity")
        tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-       tet.P = 1250
+       tet.P = 3000
        tet.Velocity = Vector3.new(0, 0, 0)
-       tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
+       tet.Name = "SofasVelocity"
        tet.Parent = seat1
 
-       -- 5. LOOP METRALHADORA DE REPETIÇÃO PROTEGIDO
+       -- 5. LOOP DE PERSEGUIÇÃO ATÉ O ALVO SENTAR (MÁXIMO 8 SEGUNDOS)
+       local tempoInicio = os.time()
+       local pegouAlvo = false
+
        local success, err = pcall(function()
            repeat
-               for m = 1, 35 do
-                   if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then break end
-                   local currentTRoot = targetPlayer.Character.HumanoidRootPart
-                   
-                   local posX = currentTRoot.Position.X + (currentTRoot.Velocity.X / 2)
-                   local posY = currentTRoot.Position.Y + (currentTRoot.Velocity.Y / 2)
-                   local posZ = currentTRoot.Position.Z + (currentTRoot.Velocity.Z / 2)
-                   
-                   seat1.CFrame = CFrame.new(Vector3.new(posX, posY, posZ)) * CFrame.new(0, -2.8, 0)
-                   task.wait(0.01)
+               if not targetPlayer or not targetPlayer.Character or not tRoot then break end
+               
+               -- Previsão de movimento básica para colar perfeitamente no alvo
+               local posX = tRoot.Position.X + (tRoot.Velocity.X * 0.1)
+               local posY = tRoot.Position.Y
+               local posZ = tRoot.Position.Z + (tRoot.Velocity.Z * 0.1)
+               
+               -- Spawna o assento exatamente nos pés do alvo para forçar o Seat do Roblox
+               seat1.CFrame = CFrame.new(posX, posY - 1.5, posZ)
+               
+               -- Checa se o alvo sentou
+               if tHumanoid.SeatPart == seat1 or tHumanoid.Sit == true then
+                   pegouAlvo = true
+                   break
                end
                
-               if tet then tet:Destroy() end
-               couch.Parent = LocalPlayer.Backpack
-               task.wait(0.1)
-               
-               local currentHandle = couch:FindFirstChild("Handle ") or couch:FindFirstChild("Handle")
-               if currentHandle then currentHandle.Name = "Handle" end
-               task.wait(0.2)
-               
-               couch.Parent = LocalPlayer.Character
-               task.wait(0.1)
-               couch.Parent = LocalPlayer.Backpack
-               
-               currentHandle = couch:FindFirstChild("Handle") or couch:FindFirstChild("Handle ")
-               if currentHandle then currentHandle.Name = "Handle " end
-               task.wait(0.2)
-               
-               couch.Parent = LocalPlayer.Character
-               
-               tet = Instance.new("BodyVelocity")
-               tet.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-               tet.P = 1250
-               tet.Velocity = Vector3.new(0, 0, 0)
-               tet.Name = "#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W"
-               tet.Parent = seat1
-               
-               task.wait(0.1)
-           until not tHumanoid or tHumanoid.Sit == true or not targetPlayer.Character
+               task.wait(0.02)
+           until (os.time() - tempoInicio) > 8 or not targetPlayer.Character
        end)
 
-       if not success then
-           warn("Erro durante a execução do loop: " .. tostring(err))
-       end
+       if tet then tet:Destroy() end
 
        -- 6. EXECUÇÃO DO BOTE FATAL (KILL ZONE SUBTERRÂNEA)
-       task.wait(0.1)
-       couch.Parent = LocalPlayer.Backpack
+       if pegouAlvo or tHumanoid.Sit == true then
+           -- IMPORTANTE: Tira do Character e joga no Workspace para quebrar a solda da mão do seu boneco
+           couch.Parent = workspace 
+           task.wait(0.05)
 
-       local finalHandle = couch:FindFirstChild("Handle ") or couch:FindFirstChild("Handle")
-       if finalHandle and seat1 and seat2 then
-           finalHandle.CFrame = CFrame.new(1, -501, -1)
-           seat1.CFrame = CFrame.new(1, -501, -1)
-           seat2.CFrame = CFrame.new(1, -501, -1)
+           -- Envia o sofá e os assentos para o Void profundo
+           local localizacaoMorte = CFrame.new(1, -501, -1)
+           if handle then handle.CFrame = localizacaoMorte end
+           if seat1 then seat1.CFrame = localizacaoMorte end
+           if seat2 then seat2.CFrame = localizacaoMorte end
+           
+           Rayfield:Notify({Title = "Sucesso", Content = "Alvo enviado para o limbo com sucesso!", Duration = 3})
+           task.wait(1.5) -- Tempo pro script do jogo entender que ele morreu/despawnou lá embaixo
+       else
+           Rayfield:Notify({Title = "Falha", Content = "O alvo se moveu demais e não sentou no sofá.", Duration = 3})
        end
-
-       couch.Parent = LocalPlayer.Character
-       task.wait(0.3)
-       couch.Parent = LocalPlayer.Backpack
-       task.wait(1.5)
 
        -- 7. LIMPEZA TOTAL DE EVIDÊNCIAS
-       if seat1 then
-           local bv = seat1:FindFirstChild("#mOVOOEPF$#@F$#GERE..>V<<<<EW<V<<W")
-           if bv then bv:Destroy() end
-       end
        ReplicatedStorage.RE["1Clea1rTool1s"]:FireServer("ClearAllTools")
    end,
 })
