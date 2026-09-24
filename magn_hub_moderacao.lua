@@ -153,7 +153,7 @@ MainTab:CreateButton({
 })
 
 -- 4. O Botão que executa a função usando a variável atualizada
-ModTab:CreateButton({
+MainTab:CreateButton({
    Name = ";kick",
    Callback = function()
        -- Verifica se um alvo foi digitado antes de rodar o código
