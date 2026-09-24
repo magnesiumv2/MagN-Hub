@@ -175,37 +175,42 @@ MainTab:CreateButton({
                local targetHRP = targetPlayer.Character.HumanoidRootPart
                local spawnCFrame = targetHRP.CFrame * CFrame.new(3, 0, 0)
                
-               -- [CONFIGURAÇÃO DOS REMOTOS ENCONTRADOS POR VOCÊ]
+               -- [GATILHO DE SPAWN EXTRAÍDO DO COBALT]
                local reFolder = ReplicatedStorage:FindFirstChild("RE")
-               local createRemote = reFolder and reFolder:FindFirstChild("1Clea1rTool1s")
+               local createEvent = reFolder and reFolder:FindFirstChild("1Clea1rTool1s")
                
-               if createRemote then
-                   local nomeDoProp = "LightsYellowLamp"
-                   
+               if createEvent then
                    task.spawn(function()
+                       -- Executa o loop para spawnar e teleportar 15 props sequencialmente
                        for i = 1, 15 do
-                           -- 1. Dispara o evento para spawnar o prop localmente/servidor
-                           createRemote:FireServer(nomeDoProp)
-                           task.wait(0.02)
+                           -- Dispara o spawn idêntico ao comando interceptado do jogo
+                           createEvent:FireServer(
+                               "RequestingPropName",
+                               "LightsYellowLamp",
+                               "Lights",
+                               nil
+                           )
                            
-                           -- 2. Tenta atualizar o CFrame do prop criado na pasta do Workspace
+                           -- Pequena pausa para dar tempo do servidor registrar e instanciar o objeto na pasta
+                           task.wait(0.05)
+                           
+                           -- [LOGICA DE TELEPORTE DO PROP ATÉ O ALVO via RemoteFunction]
                            if WorkspaceCom then
                                local trafficCones = WorkspaceCom:FindFirstChild("001_TrafficCones")
                                if trafficCones then
-                                   -- Varre os últimos itens criados para achar o prop e atualizar a posição
                                    local children = trafficCones:GetChildren()
                                    if #children > 0 then
-                                       -- Pega o item mais recente criado para evitar o número fixo [34]
-                                       local ultimoProp = children[#children] 
+                                       -- Seleciona dinamicamente o último prop criado (evita travar em nomes fixos)
+                                       local ultimoProp = children[#children]
                                        
-                                       -- Executa a alteração do CFrame usando o método do próprio jogo
-                                       pcall(function()
-                                           if ultimoProp:FindFirstChild("SetCurrentCFrame") then
-                                               ultimoProp.SetCurrentCFrame:FireServer(spawnCFrame)
-                                           elseif ultimoProp:IsA("RemoteEvent") or ultimoProp:IsA("RemoteFunction") then
-                                               ultimoProp:FireServer(spawnCFrame)
-                                           end
-                                       end)
+                                       -- Procura a RemoteFunction SetCurrentCFrame dentro do prop recém-gerado
+                                       local setCFrameRemote = ultimoProp:FindFirstChild("SetCurrentCFrame")
+                                       if setCFrameRemote and setCFrameRemote:IsA("RemoteFunction") then
+                                           -- Executa usando InvokeServer e injeta o CFrame do alvo, exatamente como o Cobalt mostrou
+                                           pcall(function()
+                                               setCFrameRemote:InvokeServer(spawnCFrame)
+                                           end)
+                                       end
                                    end
                                end
                            end
@@ -213,7 +218,7 @@ MainTab:CreateButton({
                        
                        Rayfield:Notify({
                            Title = "🛡️ Executado", 
-                           Content = "Lâmpadas amarelas geradas e posicionadas em " .. targetPlayer.Name, 
+                           Content = "Props gerados e posicionados com sucesso em " .. targetPlayer.Name, 
                            Duration = 3
                        })
                    end)
