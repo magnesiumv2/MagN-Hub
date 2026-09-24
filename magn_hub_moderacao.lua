@@ -160,6 +160,7 @@ MainTab:CreateButton({
        if AlvoSelecionado ~= "" then
            local Players = game:GetService("Players")
            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+           local WorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
            
            -- Tenta encontrar o jogador por nome exato ou nome parcial
            local targetPlayer = nil
@@ -174,25 +175,50 @@ MainTab:CreateButton({
                local targetHRP = targetPlayer.Character.HumanoidRootPart
                local spawnCFrame = targetHRP.CFrame * CFrame.new(3, 0, 0)
                
-               local propRemote = ReplicatedStorage:FindFirstChild("PlaceProp") or ReplicatedStorage:FindFirstChild("BuildingRemote")
+               -- [CONFIGURAÇÃO DOS REMOTOS ENCONTRADOS POR VOCÊ]
+               local reFolder = ReplicatedStorage:FindFirstChild("RE")
+               local createRemote = reFolder and reFolder:FindFirstChild("1Clea1rTool1s")
                
-               if propRemote then
-                   local nomeDoProp = "TrafficBarrier" -- Substitua pelo nome do seu prop luminoso
+               if createRemote then
+                   local nomeDoProp = "LightsYellowLamp"
                    
                    task.spawn(function()
                        for i = 1, 15 do
-                           propRemote:FireServer(nomeDoProp, spawnCFrame)
-                           task.wait(0.01)
+                           -- 1. Dispara o evento para spawnar o prop localmente/servidor
+                           createRemote:FireServer(nomeDoProp)
+                           task.wait(0.02)
+                           
+                           -- 2. Tenta atualizar o CFrame do prop criado na pasta do Workspace
+                           if WorkspaceCom then
+                               local trafficCones = WorkspaceCom:FindFirstChild("001_TrafficCones")
+                               if trafficCones then
+                                   -- Varre os últimos itens criados para achar o prop e atualizar a posição
+                                   local children = trafficCones:GetChildren()
+                                   if #children > 0 then
+                                       -- Pega o item mais recente criado para evitar o número fixo [34]
+                                       local ultimoProp = children[#children] 
+                                       
+                                       -- Executa a alteração do CFrame usando o método do próprio jogo
+                                       pcall(function()
+                                           if ultimoProp:FindFirstChild("SetCurrentCFrame") then
+                                               ultimoProp.SetCurrentCFrame:FireServer(spawnCFrame)
+                                           elseif ultimoProp:IsA("RemoteEvent") or ultimoProp:IsA("RemoteFunction") then
+                                               ultimoProp:FireServer(spawnCFrame)
+                                           end
+                                       end)
+                                   end
+                               end
+                           end
                        end
                        
                        Rayfield:Notify({
                            Title = "🛡️ Executado", 
-                           Content = "Props gerados sequencialmente ao lado de " .. targetPlayer.Name, 
+                           Content = "Lâmpadas amarelas geradas e posicionadas em " .. targetPlayer.Name, 
                            Duration = 3
                        })
                    end)
                else
-                   Rayfield:Notify({Title = "Erro", Content = "Remote de Props não encontrado.", Duration = 3})
+                   Rayfield:Notify({Title = "Erro", Content = "Pasta RE ou evento 1Clea1rTool1s não encontrados.", Duration = 3})
                end
            else
                Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado no mapa.", Duration = 3})
