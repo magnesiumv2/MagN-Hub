@@ -41,19 +41,48 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Comandos", 4483362458)
 
 -- ==========================================
--- ABA 1: MODERAÇÃO LEVE (Acessível por Você e pelo Amigo)
+-- DROPDOWN DINÂMICA (Substitua o antigo CreateInput por este trecho)
 -- ==========================================
-local SectionLeve = MainTab:CreateSection("Moderação Leve")
-local AlvoSelecionado = ""
 
-MainTab:CreateInput({
-   Name = "Nome do Alvo",
-   PlaceholderText = "Digite o nome...",
-   RemoveTextAfterFocusLost = false,
-   Callback = function(Text)
-       AlvoSelecionado = Text
+-- Mantém a mesma variável global que seus botões já usam
+AlvoSelecionado = ""
+
+-- Função que lista os jogadores do servidor
+local function obterListaJogadores()
+    local lista = {}
+    for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+        -- Opcional: Remove você mesmo da lista para evitar auto-ataque
+        if p ~= game:GetService("Players").LocalPlayer then
+            table.insert(lista, p.Name)
+        end
+    end
+    return lista
+end
+
+-- Cria o Dropdown alimentando a variável AlvoSelecionado automaticamente
+local DropdownAlvos = MainTab:CreateDropdown({
+   Name = "Selecionar Alvo",
+   Options = obterListaJogadores(),
+   CurrentOption = {""},
+   MultipleOptions = false,
+   Flag = "DropdownAlvoSelecionado",
+   Callback = function(OpcaoSelecionada)
+       -- Garante que o valor retornado seja transformado em String para seus botões funcionarem
+       if type(OpcaoSelecionada) == "table" then
+           AlvoSelecionado = OpcaoSelecionada[1] or ""
+       else
+           AlvoSelecionado = OpcaoSelecionada or ""
+       end
    end,
 })
+
+-- Atualiza a lista do menu automaticamente quando alguém entra ou sai do jogo
+local function atualizarDropdown()
+    DropdownAlvos:Refresh(obterListaJogadores(), true)
+end
+
+game:GetService("Players").PlayerAdded:Connect(atualizarDropdown)
+game:GetService("Players").PlayerRemoving:Connect(atualizarDropdown)
 
 MainTab:CreateButton({
    Name = ";fling",
