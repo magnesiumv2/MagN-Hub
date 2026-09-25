@@ -257,7 +257,7 @@ MainTab:CreateButton({
 })
 
 -- ==========================================
--- BOTÃO: ;punish (Versão Corrigida e Blindada)
+-- BOTÃO: ;punish (Versão Corrigida Sem Erros)
 -- ==========================================
 MainTab:CreateButton({
    Name = ";punish",
@@ -266,7 +266,6 @@ MainTab:CreateButton({
        local nomeAlvo = ""
        if type(AlvoSelecionado) == "table" then
            nomeAlvo = AlvoSelecionado[1] or ""
-        Mauriciom -- Se o seu dropdown já retornar string, usa direto
        elseif type(AlvoSelecionado) == "string" then
            nomeAlvo = AlvoSelecionado
        end
@@ -311,7 +310,7 @@ MainTab:CreateButton({
                            local props = trafficCones:GetChildren()
                            
                            if #props > 0 then
-                               -- CORREÇÃO: Pega estritamente o primeiro objeto físico válido da tabela
+                               -- Pega estritamente o primeiro objeto físico válido da tabela
                                local propSelecionado = props[1]
                                
                                if propSelecionado then
