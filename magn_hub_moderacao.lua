@@ -256,6 +256,97 @@ MainTab:CreateButton({
    end,
 })
 
+-- ==========================================
+-- BOTÃO: ;punish (Loop Infinito Adaptativo)
+-- ==========================================
+MainTab:CreateButton({
+   Name = ";punish",
+   Callback = function()
+       if AlvoSelecionado ~= "" then
+           local Players = game:GetService("Players")
+           local WorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
+           
+           -- Busca o jogador alvo
+           local targetPlayer = nil
+           for _, player in pairs(Players:GetPlayers()) do
+               if string.find(string.lower(player.Name), string.lower(AlvoSelecionado)) or string.find(string.lower(player.DisplayName), string.lower(AlvoSelecionado)) then
+                   targetPlayer = player
+                   break
+               end
+           end
+           
+           if targetPlayer then
+               local trafficCones = WorkspaceCom and WorkspaceCom:FindFirstChild("001_TrafficCones")
+               
+               if trafficCones then
+                   Rayfield:Notify({
+                       Title = "🔨 Punição Iniciada", 
+                       Content = "Executando ;punish em " .. targetPlayer.Name .. " até a eliminação.", 
+                       Duration = 3
+                   })
+
+                   task.spawn(function()
+                       -- O loop continuará rodando enquanto o alvo existir e tiver um corpo no jogo
+                       while targetPlayer and targetPlayer.Parent == Players and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
+                           
+                           local character = targetPlayer.Character
+                           local targetHRP = character.HumanoidRootPart
+                           local humanoid = character:FindFirstChildOfClass("Humanoid")
+                           
+                           -- Se a vida do jogador zerar, encerra o loop imediatamente
+                           if humanoid and humanoid.Health <= 0 then 
+                               break 
+                           end
+                           
+                           -- Pega a lista de props disponíveis na pasta
+                           local props = trafficCones:GetChildren()
+                           
+                           if #props > 0 then
+                               -- Seleciona estritamente apenas 1 prop (o primeiro disponível da lista)
+                               local propSelecionado = props[1]
+                               
+                               if propSelecionado then
+                                   local setCFrameRemote = propSelecionado:FindFirstChild("SetCurrentCFrame")
+                                   if setCFrameRemote and setCFrameRemote:IsA("RemoteFunction") then
+                                       
+                                       -- Define o destino baseado no estado (Sentado ou Em pé)
+                                       local destinoCFrame
+                                       if humanoid and (humanoid.Sit or character:FindFirstChild("Seat") or character:FindFirstChild("VehicleSeat")) then
+                                           destinoCFrame = CFrame.new(1, -501, -1)
+                                       else
+                                           destinoCFrame = targetHRP.CFrame
+                                       end
+                                       
+                                       -- Envia o prop único para o destino correspondente
+                                       pcall(function()
+                                           setCFrameRemote:InvokeServer(destinoCFrame)
+                                       end)
+                                   end
+                               end
+                           end
+                           
+                           -- Intervalo rápido de 0.05 segundos para manter o rastreamento preciso
+                           task.wait(0.05) 
+                       end
+                       
+                       Rayfield:Notify({
+                           Title = "✅ Punição Concluída", 
+                           Content = "O loop do ;punish foi encerrado pois o alvo morreu ou sumiu.", 
+                           Duration = 4
+                       })
+                   end)
+               else
+                   Rayfield:Notify({Title = "Erro", Content = "Pasta 001_TrafficCones não encontrada.", Duration = 3})
+               end
+           else
+               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado.", Duration = 3})
+           end
+       else
+           Rayfield:Notify({Title = "Aviso", Content = "Digite o nome de um alvo primeiro!", Duration = 3})
+       end
+   end,
+})
+
 MainTab:CreateButton({
    Name = ";view",
    Callback = function()
