@@ -257,28 +257,18 @@ MainTab:CreateButton({
 })
 
 -- ==========================================
--- BOTÃO: ;punish (Versão Corrigida e Testada)
+-- BOTÃO: ;punish (Versão Corrigida da Cadeira)
 -- ==========================================
 MainTab:CreateButton({
    Name = ";punish",
    Callback = function()
-       -- Trata o valor do seu Dropdown de forma segura
-       local nomeAlvo = ""
-       if type(AlvoSelecionado) == "table" then
-           -- Se o Rayfield retornar uma tabela, extrai a primeira opção
-           nomeAlvo = AlvoSelecionado[1] or ""
-       elseif type(AlvoSelecionado) == "string" then
-           nomeAlvo = AlvoSelecionado
-       end
-
-       if nomeAlvo ~= "" then
+       if AlvoSelecionado ~= "" then
            local Players = game:GetService("Players")
            local WorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
            
-           -- Busca o jogador alvo no servidor
            local targetPlayer = nil
            for _, player in pairs(Players:GetPlayers()) do
-               if string.find(string.lower(player.Name), string.lower(nomeAlvo)) or string.find(string.lower(player.DisplayName), string.lower(nomeAlvo)) then
+               if string.find(string.lower(player.Name), string.lower(AlvoSelecionado)) or string.find(string.lower(player.DisplayName), string.lower(AlvoSelecionado)) then
                    targetPlayer = player
                    break
                end
@@ -290,67 +280,73 @@ MainTab:CreateButton({
                if trafficCones then
                    Rayfield:Notify({
                        Title = "🔨 Punição Iniciada", 
-                       Content = "Executando ;punish em " .. targetPlayer.Name, 
+                       Content = "Teleportando props. Se o alvo " .. targetPlayer.Name .. " sentar, a cadeira irá para o limbo.", 
                        Duration = 3
                    })
 
                    task.spawn(function()
-                       -- Executa em segundo plano em loop contínuo
                        while targetPlayer and targetPlayer.Parent == Players and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
                            
                            local character = targetPlayer.Character
                            local targetHRP = character.HumanoidRootPart
                            local humanoid = character:FindFirstChildOfClass("Humanoid")
                            
-                           -- Condição de interrupção caso a vida chegue a zero
-                           if humanoid and humanoid.Health <= 0 then 
-                               break 
+                           if humanoid and humanoid.Health <= 0 then
+                               break
+                           end
+                           
+                           -- VARIÁVEL EXCLUSIVA DO PUNISH: Isola para não interferir na velocidade do ;kick
+                           local destinoPunishCFrame = targetHRP.CFrame
+                           
+                           -- CHECAGEM DA CADEIRA: Verifica se o jogador está sentado e localiza o objeto físico da cadeira
+                           if humanoid and (humanoid.Sit or character:FindFirstChild("Seat") or character:FindFirstChild("VehicleSeat") or humanoid.SeatPart) then
+                               destinoPunishCFrame = CFrame.new(1, -501, -1)
+                               
+                               -- Se encontrarmos a cadeira exata via engine, aplicamos o teleporte nela também
+                               local cadeiraFisica = humanoid.SeatPart or character:FindFirstChild("Seat") or character:FindFirstChild("VehicleSeat")
+                               if cadeiraFisica and cadeiraFisica:IsA("BasePart") then
+                                   pcall(function()
+                                       -- Se a cadeira estiver ancorada pelo mapa, desancora temporariamente para permitir o teleporte por física do prop
+                                       if cadeiraFisica.Anchored then
+                                           cadeiraFisica.Anchored = false
+                                       end
+                                   end)
+                               end
                            end
                            
                            local props = trafficCones:GetChildren()
                            
                            if #props > 0 then
-                               -- Correção: Pega de forma correta e explícita o primeiro prop da pasta
-                               local propSelecionado = props[1]
-                               
-                               if propSelecionado then
-                                   local setCFrameRemote = propSelecionado:FindFirstChild("SetCurrentCFrame")
+                               for _, prop in pairs(props) do
+                                   if not (targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")) then break end
+                                   
+                                   local setCFrameRemote = prop:FindFirstChild("SetCurrentCFrame")
                                    if setCFrameRemote and setCFrameRemote:IsA("RemoteFunction") then
-                                       
-                                       -- Define o destino baseado no estado (Sentado ou Em pé)
-                                       local destinoCFrame
-                                       if humanoid and (humanoid.Sit or character:FindFirstChild("Seat") or character:FindFirstChild("VehicleSeat")) then
-                                           destinoCFrame = CFrame.new(1, -501, -1)
-                                       else
-                                           destinoCFrame = targetHRP.CFrame
-                                       end
-                                       
-                                       -- Evita falhas ou travamentos de rede do exploit
                                        pcall(function()
-                                           setCFrameRemote:InvokeServer(destinoCFrame)
+                                           -- Envia o prop usando a coordenada exclusiva do punish
+                                           setCFrameRemote:InvokeServer(destinoPunishCFrame)
                                        end)
                                    end
                                end
                            end
                            
-                           -- Delay seguro e agressivo para processamento do loop
-                           task.wait(0.05) 
+                           task.wait(0.1) 
                        end
                        
                        Rayfield:Notify({
                            Title = "✅ Punição Concluída", 
-                           Content = "O alvo foi eliminado ou desconectado.", 
-                           Duration = 4
+                           Content = "Punição encerrada com sucesso.", 
+                           Duration = 5
                        })
                    end)
                else
                    Rayfield:Notify({Title = "Erro", Content = "Pasta 001_TrafficCones não encontrada.", Duration = 3})
                end
            else
-               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado no servidor.", Duration = 3})
+               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado.", Duration = 3})
            end
        else
-           Rayfield:Notify({Title = "Aviso", Content = "Selecione um alvo no Dropdown primeiro!", Duration = 3})
+           Rayfield:Notify({Title = "Aviso", Content = "Por favor, selecione um alvo primeiro!", Duration = 3})
        end
    end,
 })
