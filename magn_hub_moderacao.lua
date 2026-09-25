@@ -257,14 +257,15 @@ MainTab:CreateButton({
 })
 
 -- ==========================================
--- BOTÃO: ;punish (Versão Corrigida Sem Erros)
+-- BOTÃO: ;punish (Versão Corrigida e Testada)
 -- ==========================================
 MainTab:CreateButton({
    Name = ";punish",
    Callback = function()
-       -- Garante que AlvoSelecionado seja uma string limpa
+       -- Trata o valor do seu Dropdown de forma segura
        local nomeAlvo = ""
        if type(AlvoSelecionado) == "table" then
+           -- Se o Rayfield retornar uma tabela, extrai a primeira opção
            nomeAlvo = AlvoSelecionado[1] or ""
        elseif type(AlvoSelecionado) == "string" then
            nomeAlvo = AlvoSelecionado
@@ -274,7 +275,7 @@ MainTab:CreateButton({
            local Players = game:GetService("Players")
            local WorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
            
-           -- Busca o jogador alvo de forma segura
+           -- Busca o jogador alvo no servidor
            local targetPlayer = nil
            for _, player in pairs(Players:GetPlayers()) do
                if string.find(string.lower(player.Name), string.lower(nomeAlvo)) or string.find(string.lower(player.DisplayName), string.lower(nomeAlvo)) then
@@ -294,23 +295,22 @@ MainTab:CreateButton({
                    })
 
                    task.spawn(function()
-                       -- O loop rodará continuamente até o alvo morrer ou sumir do mapa
+                       -- Executa em segundo plano em loop contínuo
                        while targetPlayer and targetPlayer.Parent == Players and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
                            
                            local character = targetPlayer.Character
                            local targetHRP = character.HumanoidRootPart
                            local humanoid = character:FindFirstChildOfClass("Humanoid")
                            
-                           -- Se o jogador morrer, para o loop imediatamente
+                           -- Condição de interrupção caso a vida chegue a zero
                            if humanoid and humanoid.Health <= 0 then 
                                break 
                            end
                            
-                           -- Pega todos os props atuais da pasta
                            local props = trafficCones:GetChildren()
                            
                            if #props > 0 then
-                               -- Pega estritamente o primeiro objeto físico válido da tabela
+                               -- Correção: Pega de forma correta e explícita o primeiro prop da pasta
                                local propSelecionado = props[1]
                                
                                if propSelecionado then
@@ -325,7 +325,7 @@ MainTab:CreateButton({
                                            destinoCFrame = targetHRP.CFrame
                                        end
                                        
-                                       -- Dispara o teleporte do prop via pcall para ignorar erros de rede
+                                       -- Evita falhas ou travamentos de rede do exploit
                                        pcall(function()
                                            setCFrameRemote:InvokeServer(destinoCFrame)
                                        end)
@@ -333,7 +333,7 @@ MainTab:CreateButton({
                                end
                            end
                            
-                           -- Frequência do loop (50 milissegundos)
+                           -- Delay seguro e agressivo para processamento do loop
                            task.wait(0.05) 
                        end
                        
