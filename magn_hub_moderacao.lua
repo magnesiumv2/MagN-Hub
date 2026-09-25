@@ -257,19 +257,28 @@ MainTab:CreateButton({
 })
 
 -- ==========================================
--- BOTÃO: ;punish (Loop Infinito Adaptativo)
+-- BOTÃO: ;punish (Versão Corrigida e Blindada)
 -- ==========================================
 MainTab:CreateButton({
    Name = ";punish",
    Callback = function()
-       if AlvoSelecionado ~= "" then
+       -- Garante que AlvoSelecionado seja uma string limpa
+       local nomeAlvo = ""
+       if type(AlvoSelecionado) == "table" then
+           nomeAlvo = AlvoSelecionado[1] or ""
+        Mauriciom -- Se o seu dropdown já retornar string, usa direto
+       elseif type(AlvoSelecionado) == "string" then
+           nomeAlvo = AlvoSelecionado
+       end
+
+       if nomeAlvo ~= "" then
            local Players = game:GetService("Players")
            local WorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
            
-           -- Busca o jogador alvo
+           -- Busca o jogador alvo de forma segura
            local targetPlayer = nil
            for _, player in pairs(Players:GetPlayers()) do
-               if string.find(string.lower(player.Name), string.lower(AlvoSelecionado)) or string.find(string.lower(player.DisplayName), string.lower(AlvoSelecionado)) then
+               if string.find(string.lower(player.Name), string.lower(nomeAlvo)) or string.find(string.lower(player.DisplayName), string.lower(nomeAlvo)) then
                    targetPlayer = player
                    break
                end
@@ -281,28 +290,28 @@ MainTab:CreateButton({
                if trafficCones then
                    Rayfield:Notify({
                        Title = "🔨 Punição Iniciada", 
-                       Content = "Executando ;punish em " .. targetPlayer.Name .. " até a eliminação.", 
+                       Content = "Executando ;punish em " .. targetPlayer.Name, 
                        Duration = 3
                    })
 
                    task.spawn(function()
-                       -- O loop continuará rodando enquanto o alvo existir e tiver um corpo no jogo
+                       -- O loop rodará continuamente até o alvo morrer ou sumir do mapa
                        while targetPlayer and targetPlayer.Parent == Players and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
                            
                            local character = targetPlayer.Character
                            local targetHRP = character.HumanoidRootPart
                            local humanoid = character:FindFirstChildOfClass("Humanoid")
                            
-                           -- Se a vida do jogador zerar, encerra o loop imediatamente
+                           -- Se o jogador morrer, para o loop imediatamente
                            if humanoid and humanoid.Health <= 0 then 
                                break 
                            end
                            
-                           -- Pega a lista de props disponíveis na pasta
+                           -- Pega todos os props atuais da pasta
                            local props = trafficCones:GetChildren()
                            
                            if #props > 0 then
-                               -- Seleciona estritamente apenas 1 prop (o primeiro disponível da lista)
+                               -- CORREÇÃO: Pega estritamente o primeiro objeto físico válido da tabela
                                local propSelecionado = props[1]
                                
                                if propSelecionado then
@@ -317,7 +326,7 @@ MainTab:CreateButton({
                                            destinoCFrame = targetHRP.CFrame
                                        end
                                        
-                                       -- Envia o prop único para o destino correspondente
+                                       -- Dispara o teleporte do prop via pcall para ignorar erros de rede
                                        pcall(function()
                                            setCFrameRemote:InvokeServer(destinoCFrame)
                                        end)
@@ -325,13 +334,13 @@ MainTab:CreateButton({
                                end
                            end
                            
-                           -- Intervalo rápido de 0.05 segundos para manter o rastreamento preciso
+                           -- Frequência do loop (50 milissegundos)
                            task.wait(0.05) 
                        end
                        
                        Rayfield:Notify({
                            Title = "✅ Punição Concluída", 
-                           Content = "O loop do ;punish foi encerrado pois o alvo morreu ou sumiu.", 
+                           Content = "O alvo foi eliminado ou desconectado.", 
                            Duration = 4
                        })
                    end)
@@ -339,10 +348,10 @@ MainTab:CreateButton({
                    Rayfield:Notify({Title = "Erro", Content = "Pasta 001_TrafficCones não encontrada.", Duration = 3})
                end
            else
-               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado.", Duration = 3})
+               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado no servidor.", Duration = 3})
            end
        else
-           Rayfield:Notify({Title = "Aviso", Content = "Digite o nome de um alvo primeiro!", Duration = 3})
+           Rayfield:Notify({Title = "Aviso", Content = "Selecione um alvo no Dropdown primeiro!", Duration = 3})
        end
    end,
 })
