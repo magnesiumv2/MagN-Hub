@@ -188,7 +188,6 @@ MainTab:CreateButton({
        -- Verifica se um alvo foi digitado antes de rodar o código
        if AlvoSelecionado ~= "" then
            local Players = game:GetService("Players")
-           local ReplicatedStorage = game:GetService("ReplicatedStorage")
            local WorkspaceCom = workspace:FindFirstChild("WorkspaceCom")
            
            -- Tenta encontrar o jogador por nome exato ou nome parcial
@@ -200,62 +199,56 @@ MainTab:CreateButton({
                end
            end
            
-           if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-               local targetHRP = targetPlayer.Character.HumanoidRootPart
-               local spawnCFrame = targetHRP.CFrame * CFrame.new(3, 0, 0)
+           if targetPlayer then
+               local trafficCones = WorkspaceCom and WorkspaceCom:FindFirstChild("001_TrafficCones")
                
-               -- [GATILHO DE SPAWN EXTRAÍDO DO COBALT]
-               local reFolder = ReplicatedStorage:FindFirstChild("RE")
-               local createEvent = reFolder and reFolder:FindFirstChild("1Clea1rTool1s")
-               
-               if createEvent then
+               if trafficCones then
+                   Rayfield:Notify({
+                       Title = "🛡️ Ataque Iniciado", 
+                       Content = "Teleportando props continuamente para " .. targetPlayer.Name .. " até ele cair.", 
+                       Duration = 3
+                   })
+
+                   -- Inicia a thread em segundo plano para o loop infinito
                    task.spawn(function()
-                       -- Executa o loop para spawnar e teleportar 15 props sequencialmente
-                       for i = 1, 15 do
-                           -- Dispara o spawn idêntico ao comando interceptado do jogo
-                           createEvent:FireServer(
-                               "RequestingPropName",
-                               "LightsYellowLamp",
-                               "Lights",
-                               nil
-                           )
+                       -- O loop roda enquanto o jogador alvo existir no jogo E tiver um corpo vivo no mapa
+                       while targetPlayer and targetPlayer.Parent == Players and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") do
                            
-                           -- Pequena pausa para dar tempo do servidor registrar e instanciar o objeto na pasta
-                           task.wait(0.05)
+                           local targetHRP = targetPlayer.Character.HumanoidRootPart
+                           local spawnCFrame = targetHRP.CFrame 
+                           local props = trafficCones:GetChildren()
                            
-                           -- [LOGICA DE TELEPORTE DO PROP ATÉ O ALVO via RemoteFunction]
-                           if WorkspaceCom then
-                               local trafficCones = WorkspaceCom:FindFirstChild("001_TrafficCones")
-                               if trafficCones then
-                                   local children = trafficCones:GetChildren()
-                                   if #children > 0 then
-                                       -- Seleciona dinamicamente o último prop criado (evita travar em nomes fixos)
-                                       local ultimoProp = children[#children]
-                                       
-                                       -- Procura a RemoteFunction SetCurrentCFrame dentro do prop recém-gerado
-                                       local setCFrameRemote = ultimoProp:FindFirstChild("SetCurrentCFrame")
-                                       if setCFrameRemote and setCFrameRemote:IsA("RemoteFunction") then
-                                           -- Executa usando InvokeServer e injeta o CFrame do alvo, exatamente como o Cobalt mostrou
-                                           pcall(function()
-                                               setCFrameRemote:InvokeServer(spawnCFrame)
-                                           end)
-                                       end
+                           -- Se houver props na pasta, executa a varredura
+                           if #props > 0 then
+                               for _, prop in pairs(props) do
+                                   -- Verifica se o alvo ainda está vivo no meio da varredura para evitar erros
+                                   if not (targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")) then break end
+                                   
+                                   local setCFrameRemote = prop:FindFirstChild("SetCurrentCFrame")
+                                   if setCFrameRemote and setCFrameRemote:IsA("RemoteFunction") then
+                                       pcall(function()
+                                           setCFrameRemote:InvokeServer(spawnCFrame)
+                                       end)
                                    end
                                end
                            end
+                           
+                           -- Pausa crucial entre cada ciclo de varredura para não congelar o SEU jogo por excesso de processamento
+                           task.wait(0.1) 
                        end
                        
+                       -- Mensagem exibida quando o loop encerra (o jogador caiu ou saiu)
                        Rayfield:Notify({
-                           Title = "🛡️ Executado", 
-                           Content = "Props gerados e posicionados com sucesso em " .. targetPlayer.Name, 
-                           Duration = 3
+                           Title = "✅ Alvo Eliminado", 
+                           Content = "O jogador não está mais no mapa. O loop foi encerrado.", 
+                           Duration = 5
                        })
                    end)
                else
-                   Rayfield:Notify({Title = "Erro", Content = "Pasta RE ou evento 1Clea1rTool1s não encontrados.", Duration = 3})
+                   Rayfield:Notify({Title = "Erro", Content = "Pasta 001_TrafficCones não encontrada em WorkspaceCom.", Duration = 3})
                end
            else
-               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado no mapa.", Duration = 3})
+               Rayfield:Notify({Title = "Erro", Content = "Jogador não encontrado.", Duration = 3})
            end
        else
            Rayfield:Notify({Title = "Aviso", Content = "Por favor, digite o nome de um alvo primeiro!", Duration = 3})
