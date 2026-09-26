@@ -665,7 +665,6 @@ if LocalPlayer.UserId == ID_DONO then
             end 
        end,
     })
-end
 
 MainTab:CreateButton({
         Name = ";DoSNetWorkExhaustion
@@ -747,6 +746,7 @@ MainTab:CreateButton({
             pcall(function() starterGui:SetCore("SendNotification", { Title = "Script de Dupe", Text = "Finalizando processo...", Button1 = "Ok", Duration = 5 }) end)
         end,
     })
+end
 
 -- Substitua MainTab pelo nome da sua aba ou crie uma nova apenas para Status
 local SectionStatus = MainTab:CreateSection("Monitoramento do Servidor & Lag")
