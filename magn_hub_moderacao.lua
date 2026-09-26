@@ -667,7 +667,7 @@ if LocalPlayer.UserId == ID_DONO then
     })
 
 MainTab:CreateButton({
-        Name = ";DoSNetWorkExhaustion
+        Name = ";DoSNetWorkExhaustion",
         Callback = function()
             local player = game:GetService("Players").LocalPlayer
             if not player then return end
